@@ -1,0 +1,9 @@
+{
+  "youtube": {
+    "order": "hot",
+    "max_comments": 50
+  },
+  "database": {
+    "path": "data/image_analyse.sqlite3"
+  }
+}

@@ -17,8 +17,12 @@ Thumbs.db
 # Python
 __pycache__/
 *.py[cod]
-.venv/
-.venv/
+.venv/Lib/site-packages/
+.venv/Lib/**/site-packages/
+.venv/**/__pycache__/
+
+# Dependency manifests (keep repo independent)
+requirements.txt
 
 # Flask
 instance/
@@ -28,3 +32,8 @@ instance/
 node_modules/
 dist/
 build/
+
+# Databases
+*.sqlite
+*.sqlite3
+*.db

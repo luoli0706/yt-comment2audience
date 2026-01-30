@@ -5,11 +5,19 @@ import json
 import os
 import sys
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs, urlparse
 
 import requests
 from dotenv import load_dotenv
+
+# Allow `python src/collect_youtube_comments.py ...`
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.config import db_path, load_settings, youtube_max_comments, youtube_order  # noqa: E402
+from src.db_sqlite import connect, init_schema, insert_collection_run, insert_raw_thread  # noqa: E402
 
 
 def _parse_video_id(url: str) -> str:
@@ -84,6 +92,7 @@ def fetch_comment_threads(
     video_id: str,
     api_key: str,
     base_url: str,
+    order_mode: str,
     max_results_total: int,
     retry_times: int,
     retry_interval: int,
@@ -100,6 +109,8 @@ def fetch_comment_threads(
             "textFormat": "plainText",
             "key": api_key,
         }
+        if order_mode:
+            params["order"] = order_mode
         if page_token:
             params["pageToken"] = page_token
 
@@ -124,21 +135,37 @@ def fetch_comment_threads(
 
 def main(argv: Optional[List[str]] = None) -> int:
     load_dotenv()
+    settings = load_settings()
+
+    default_order_raw = (settings.get("youtube", {}).get("order") or "hot").strip().lower()
+    default_order = "hot" if default_order_raw in {"hot", "popular", "relevance", "relevant"} else "time"
+    default_max = youtube_max_comments(settings) if settings else _env_int("MAX_RESULTS", 100)
 
     parser = argparse.ArgumentParser(
         description="Collect YouTube commentThreads via YOUTUBE_API_KEY from .env"
     )
     parser.add_argument("url", help="YouTube video URL")
     parser.add_argument(
+        "--order",
+        choices=["hot", "time"],
+        default=default_order,
+        help="Sort order: hot=relevance (default), time=latest",
+    )
+    parser.add_argument(
         "--max-results",
         type=int,
-        default=_env_int("MAX_RESULTS", 100),
-        help="Total comments threads to fetch (default from env MAX_RESULTS)",
+        default=default_max,
+        help="Total commentThreads to fetch (default from settings.json youtube.max_comments)",
     )
     parser.add_argument(
         "--output",
         default="",
         help="Output JSON file path (default: print to stdout)",
+    )
+    parser.add_argument(
+        "--no-db",
+        action="store_true",
+        help="Do not store results into SQLite (default stores into DB)",
     )
     parser.add_argument(
         "--dry-run",
@@ -170,10 +197,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     retry_times = _env_int("RETRY_TIMES", 3)
     retry_interval = _env_int("RETRY_INTERVAL", 5)
 
+    order_mode = "relevance" if args.order == "hot" else "time"
+
     items = fetch_comment_threads(
         video_id=video_id,
         api_key=api_key,
         base_url=base_url,
+        order_mode=order_mode,
         max_results_total=max(1, args.max_results),
         retry_times=max(0, retry_times),
         retry_interval=max(0, retry_interval),
@@ -184,6 +214,24 @@ def main(argv: Optional[List[str]] = None) -> int:
         "count": len(items),
         "items": items,
     }
+
+    if not args.no_db:
+        path = db_path(settings)
+        conn = connect(path)
+        try:
+            init_schema(conn)
+            run_id = insert_collection_run(
+                conn,
+                video_id=video_id,
+                video_url=args.url,
+                order_mode=order_mode,
+                max_comments=max(1, args.max_results),
+            )
+            for item in items:
+                insert_raw_thread(conn, run_id=run_id, video_id=video_id, item=item)
+            conn.commit()
+        finally:
+            conn.close()
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
