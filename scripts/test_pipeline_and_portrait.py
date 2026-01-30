@@ -47,7 +47,19 @@ def _resolve_prompt_path(cli_value: str | None) -> Path:
     p = Path(raw)
     if not p.is_absolute():
         p = Path(__file__).resolve().parents[1] / p
-    return p
+
+    if p.exists():
+        return p
+
+    # EN: Backward-compatible fallback if env still points to the old .txt prompt.
+    # 中文：兼容旧配置：如果仍指向已删除的 .txt，自动尝试同名 .json。
+    if p.suffix.lower() == ".txt":
+        candidate = p.with_suffix(".json")
+        if candidate.exists():
+            return candidate
+
+    default_path = Path(__file__).resolve().parents[1] / "AI_PROMPT" / "AI_PROMPT_Default.json"
+    return default_path
 
 
 def _pipeline_call(*, base_url: str, url: str, order: str, max_comments: int) -> Dict[str, Any]:
