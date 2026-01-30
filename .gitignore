@@ -18,6 +18,11 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 .venv/
+.venv/
+
+# Flask
+instance/
+.flaskenv
 
 # Node
 node_modules/
