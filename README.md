@@ -1,14 +1,14 @@
-# Image_Analyse
+# yt-comment2audience
 
-一个基于 Flask + SQLite 的小型数据流水线示例项目：
+一个基于 Flask + SQLite 的小型数据流水线示例项目（YouTube 评论 → 观众画像）：
 - 数据采集：从 YouTube Data API v3 拉取评论线程并入库
 - 数据清洗：从数据库读取原始数据，规格化后写入新表
-- 数据画像：当前占位（暂不实现）
+- 数据画像：调用 DeepSeek（OpenAI-compatible）生成聚合层面的观众画像并写入 SQLite
 
-A minimal Flask + SQLite data pipeline demo:
+A minimal Flask + SQLite pipeline demo (YouTube comments → audience portrait):
 - Collection: fetch YouTube commentThreads and store raw data
 - Cleaning: normalize raw data into a clean table
-- Portrait: placeholder (not implemented yet)
+- Portrait: generate aggregated audience portrait via DeepSeek and store into SQLite
 
 ## 目录结构 / Structure
 
@@ -21,10 +21,11 @@ A minimal Flask + SQLite data pipeline demo:
 ## 环境变量 / Environment
 
 复制并填写：
-- [Image_Analyse/.env.example](Image_Analyse/.env.example) → `.env`
+- [.env.example](.env.example) → `.env`
 
 Required:
 - `YOUTUBE_API_KEY`
+ - `AI_API_KEY`
 
 说明：`.env` 不会被 git 追踪。
 Note: `.env` is not tracked by git.
@@ -120,6 +121,56 @@ Response JSON:
 ```powershell
 .\.venv\Scripts\python scripts\test_dispatch_api.py
 ```
+
+## 画像接口 / Portrait API
+
+`POST /api/portrait`
+
+两种用法：
+1) 直接给 URL（服务端会自动：采集→清洗→画像）：
+
+Request JSON:
+```json
+{
+	"url": "https://www.youtube.com/watch?v=MdTAJ1J2LeM",
+	"order": "hot",
+	"max_comments": 20,
+	"overwrite": true
+}
+```
+
+2) 给已有的 `run_id`（只做画像，复用已清洗数据）：
+
+```json
+{
+	"run_id": 3,
+	"overwrite": true
+}
+```
+
+Response JSON:
+- `portrait`: DeepSeek 返回并解析后的 JSON（若解析失败则可能为 null）
+- `parse_ok`: 是否成功解析为 JSON
+- `portrait_raw`: 原始输出（过长会截断）
+
+测试脚本（先启动服务，再运行）：
+```powershell
+.\.venv\Scripts\python scripts\test_portrait_api.py
+```
+
+## 自定义画像模板 / Custom Prompt Templates
+
+通过编辑 prompt JSON 文件，并在 `.env` 中指定 `AI_PROMPT` 即可切换模板：
+
+1) 在 [AI_PROMPT/](AI_PROMPT/) 下创建或复制一个 prompt JSON（必须包含字段：`system_prompt`）。
+2) 在 `.env` 中设置：
+
+```dotenv
+AI_PROMPT="AI_PROMPT/your_custom_prompt.json"
+```
+
+默认推荐使用优化模板：
+`AI_PROMPT="AI_PROMPT/AI_PROMPT_Optimized.zh.json"`
 
 ## License
 
