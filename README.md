@@ -92,6 +92,35 @@ Open:
 - http://127.0.0.1:5076/
 - http://127.0.0.1:5076/health
 
+## 统一调度接口 / Unified Dispatch API
+
+`POST /api/pipeline`
+
+Request JSON:
+```json
+{
+	"url": "https://www.youtube.com/watch?v=MdTAJ1J2LeM",
+	"order": "hot",
+	"max_comments": 10
+}
+```
+
+Response JSON:
+- `result`: 规格化后的评论列表 / normalized comments
+- UTF-8 输出，支持中文/日文/韩文/英文等字符
+
+## 调度接口测试脚本 / Dispatch API Test Script
+
+先启动服务：
+```powershell
+.\.venv\Scripts\python main.py
+```
+
+再运行测试脚本（会把结果打印到控制台，确保多语言字符正常显示）：
+```powershell
+.\.venv\Scripts\python scripts\test_dispatch_api.py
+```
+
 ## License
 
 Licensed under the Apache License 2.0. See [LICENSE](LICENSE).

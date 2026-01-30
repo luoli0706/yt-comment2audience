@@ -114,6 +114,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
             insert_clean_comment(
                 conn,
+                run_id=run_id,
                 raw_thread_id=raw_thread_id,
                 video_id=video_id,
                 comment_id=str(extracted["comment_id"]),
