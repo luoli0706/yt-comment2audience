@@ -12,19 +12,36 @@ from urllib.parse import parse_qs, urlparse
 import requests
 from dotenv import load_dotenv
 
-# Allow `python src/collect_youtube_comments.py ...`
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT))
+
+def _ensure_project_root_on_syspath() -> None:
+    """Ensure imports like `from src...` work when run as a script.
+
+    EN: When using `python -m ...`, this is unnecessary.
+    中文：若用 `python -m ...` 运行则不需要；直接运行脚本时需要把项目根目录加入 sys.path。
+    """
+
+    root = Path(__file__).resolve().parents[2]
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+
+
+_ensure_project_root_on_syspath()
 
 from src.config import db_path, load_settings, youtube_max_comments, youtube_order  # noqa: E402
-from src.db_sqlite import connect, init_schema, insert_collection_run, insert_raw_thread  # noqa: E402
+from src.database.sqlite import (  # noqa: E402
+    connect,
+    init_schema,
+    insert_collection_run,
+    insert_raw_thread,
+)
 
 
 def _parse_video_id(url: str) -> str:
     parsed = urlparse(url.strip())
     host = (parsed.netloc or "").lower()
 
-    # Examples:
+    # EN: Supported URL examples
+    # 中文：支持的 URL 示例
     # - https://www.youtube.com/watch?v=MdTAJ1J2LeM
     # - https://youtu.be/MdTAJ1J2LeM
     # - https://www.youtube.com/shorts/MdTAJ1J2LeM
@@ -71,12 +88,12 @@ def _request_with_retries(
             if resp.status_code == 200:
                 return resp.json()
 
-            # Retry on transient HTTP errors
+            # EN: Retry on transient HTTP errors
+            # 中文：遇到临时性错误时重试
             if resp.status_code in {429, 500, 502, 503, 504}:
                 time.sleep(retry_interval)
                 continue
 
-            # Non-retryable
             raise RuntimeError(f"HTTP {resp.status_code}: {resp.text[:500]}")
         except Exception as e:  # noqa: BLE001
             last_err = e
@@ -89,6 +106,7 @@ def _request_with_retries(
 
 
 def fetch_comment_threads(
+    *,
     video_id: str,
     api_key: str,
     base_url: str,
@@ -108,9 +126,8 @@ def fetch_comment_threads(
             "maxResults": per_page,
             "textFormat": "plainText",
             "key": api_key,
+            "order": order_mode,
         }
-        if order_mode:
-            params["order"] = order_mode
         if page_token:
             params["pageToken"] = page_token
 
@@ -137,35 +154,39 @@ def main(argv: Optional[List[str]] = None) -> int:
     load_dotenv()
     settings = load_settings()
 
-    default_order_raw = (settings.get("youtube", {}).get("order") or "hot").strip().lower()
-    default_order = "hot" if default_order_raw in {"hot", "popular", "relevance", "relevant"} else "time"
-    default_max = youtube_max_comments(settings) if settings else _env_int("MAX_RESULTS", 100)
-
     parser = argparse.ArgumentParser(
-        description="Collect YouTube commentThreads via YOUTUBE_API_KEY from .env"
+        description=(
+            "Collect YouTube commentThreads using YOUTUBE_API_KEY from .env; "
+            "store raw data into SQLite. (Silent by default)"
+        )
     )
     parser.add_argument("url", help="YouTube video URL")
     parser.add_argument(
         "--order",
         choices=["hot", "time"],
-        default=default_order,
+        default="hot",
         help="Sort order: hot=relevance (default), time=latest",
     )
     parser.add_argument(
         "--max-results",
         type=int,
-        default=default_max,
+        default=youtube_max_comments(settings) if settings else 50,
         help="Total commentThreads to fetch (default from settings.json youtube.max_comments)",
-    )
-    parser.add_argument(
-        "--output",
-        default="",
-        help="Output JSON file path (default: print to stdout)",
     )
     parser.add_argument(
         "--no-db",
         action="store_true",
-        help="Do not store results into SQLite (default stores into DB)",
+        help="Do not store results into SQLite",
+    )
+    parser.add_argument(
+        "--output",
+        default="",
+        help="Write raw JSON payload to a file",
+    )
+    parser.add_argument(
+        "--print",
+        action="store_true",
+        help="Print raw JSON payload to stdout (otherwise silent)",
     )
     parser.add_argument(
         "--dry-run",
@@ -197,6 +218,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     retry_times = _env_int("RETRY_TIMES", 3)
     retry_interval = _env_int("RETRY_INTERVAL", 5)
 
+    # EN: Map settings.json style to YouTube API 'order' values.
+    # 中文：将 settings.json 里的排序偏好映射到 YouTube API 的 order 参数。
     order_mode = "relevance" if args.order == "hot" else "time"
 
     items = fetch_comment_threads(
@@ -204,20 +227,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         api_key=api_key,
         base_url=base_url,
         order_mode=order_mode,
-        max_results_total=max(1, args.max_results),
+        max_results_total=max(1, int(args.max_results)),
         retry_times=max(0, retry_times),
         retry_interval=max(0, retry_interval),
     )
 
-    payload = {
-        "video_id": video_id,
-        "count": len(items),
-        "items": items,
-    }
+    payload = {"video_id": video_id, "count": len(items), "items": items}
 
     if not args.no_db:
-        path = db_path(settings)
-        conn = connect(path)
+        conn = connect(db_path(settings))
         try:
             init_schema(conn)
             run_id = insert_collection_run(
@@ -225,7 +243,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                 video_id=video_id,
                 video_url=args.url,
                 order_mode=order_mode,
-                max_comments=max(1, args.max_results),
+                max_comments=max(1, int(args.max_results)),
             )
             for item in items:
                 insert_raw_thread(conn, run_id=run_id, video_id=video_id, item=item)
@@ -236,7 +254,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, indent=2)
-    else:
+
+    if args.print:
         json.dump(payload, sys.stdout, ensure_ascii=False, indent=2)
         sys.stdout.write("\n")
 

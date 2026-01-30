@@ -129,7 +129,9 @@ def insert_raw_thread(
 
 
 def latest_run_id(conn: sqlite3.Connection) -> Optional[int]:
-    row = conn.execute("SELECT id FROM collection_runs ORDER BY id DESC LIMIT 1").fetchone()
+    row = conn.execute(
+        "SELECT id FROM collection_runs ORDER BY id DESC LIMIT 1"
+    ).fetchone()
     if not row:
         return None
     return int(row[0])

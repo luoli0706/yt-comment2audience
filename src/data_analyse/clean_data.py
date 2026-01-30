@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sys
@@ -8,29 +9,52 @@ from typing import Any, Dict, Optional
 
 from dotenv import load_dotenv
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT))
+
+def _ensure_project_root_on_syspath() -> None:
+    """Ensure imports like `from src...` work when run as a script.
+
+    EN: When using `python -m ...`, this is unnecessary.
+    中文：若用 `python -m ...` 运行则不需要；直接运行脚本时需要把项目根目录加入 sys.path。
+    """
+
+    root = Path(__file__).resolve().parents[2]
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
+
+
+_ensure_project_root_on_syspath()
 
 from src.config import db_path, load_settings  # noqa: E402
-from src.db_sqlite import connect, init_schema, insert_clean_comment, iter_raw_threads, latest_run_id  # noqa: E402
+from src.database.sqlite import (  # noqa: E402
+    connect,
+    init_schema,
+    insert_clean_comment,
+    iter_raw_threads,
+    latest_run_id,
+)
 
 
 _WS_RE = re.compile(r"\s+")
 
 
 def _normalize_text(text: str) -> str:
+    # EN: Normalize whitespace (newline/tab/multiple spaces) into single spaces.
+    # 中文：将换行/制表符/多空格等统一折叠成单个空格。
     text = text.replace("\r\n", "\n").replace("\r", "\n").strip()
-    # Collapse all whitespace (including newlines/tabs) into a single space
     return _WS_RE.sub(" ", text).strip()
 
 
 def _extract_top_level(item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    # EN: Extract top-level comment fields from a commentThread item.
+    # 中文：从 commentThread 原始结构中提取顶层评论字段。
     snippet = item.get("snippet")
     if not isinstance(snippet, dict):
         return None
+
     top = snippet.get("topLevelComment")
     if not isinstance(top, dict):
         return None
+
     top_snippet = top.get("snippet")
     if not isinstance(top_snippet, dict):
         return None
@@ -49,22 +73,32 @@ def _extract_top_level(item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     }
 
 
-def main() -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     load_dotenv()
     settings = load_settings()
-    path = db_path(settings)
 
-    conn = connect(path)
+    parser = argparse.ArgumentParser(
+        description="Read raw_comment_threads from SQLite and normalize into clean_comments."
+    )
+    parser.add_argument(
+        "--run-id",
+        type=int,
+        default=0,
+        help="Process a specific collection run id (default: latest)",
+    )
+    args = parser.parse_args(argv)
+
+    conn = connect(db_path(settings))
     try:
         init_schema(conn)
-        run_id = latest_run_id(conn)
-        if run_id is None:
+        run_id = int(args.run_id) if int(args.run_id) > 0 else (latest_run_id(conn) or 0)
+        if run_id <= 0:
             raise SystemExit("No collection_runs found. Run collection first.")
 
-        inserted = 0
-        seen = 0
+        scanned = 0
+        inserted_or_ignored = 0
         for row in iter_raw_threads(conn, run_id=run_id):
-            seen += 1
+            scanned += 1
             raw_thread_id = int(row["id"])
             video_id = str(row["video_id"])
             item = json.loads(row["item_json"])
@@ -90,13 +124,13 @@ def main() -> int:
                 text=text,
                 text_original=text_original,
             )
-            inserted += 1
+            inserted_or_ignored += 1
 
         conn.commit()
     finally:
         conn.close()
 
-    print(f"Cleaned comments stored. scanned={seen} inserted_or_ignored={inserted}")
+    print(f"Clean done. run_id={run_id} scanned={scanned} inserted_or_ignored={inserted_or_ignored}")
     return 0
 
 
