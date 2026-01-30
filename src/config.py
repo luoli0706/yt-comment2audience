@@ -70,3 +70,33 @@ def ai_language(settings: Dict[str, Any]) -> str:
         return "en"
 
     raise ValueError(f"Unknown ai.language in settings.json: {raw}")
+
+
+def ai_prompt_template(settings: Dict[str, Any]) -> str:
+    """AI prompt template name.
+
+    Supported: default | optimized
+    """
+
+    raw = settings.get("ai", {}).get("prompt_template", "default")
+    raw = str(raw).strip().lower()
+    if raw in {"default", "std", "standard"}:
+        return "default"
+    if raw in {"optimized", "opt", "pro"}:
+        return "optimized"
+    raise ValueError(f"Unknown ai.prompt_template in settings.json: {raw}")
+
+
+def default_ai_prompt_filename(settings: Dict[str, Any]) -> str:
+    """Resolve default prompt file name based on settings.
+
+    EN: This is used when AI_PROMPT is not explicitly set.
+    中文：当未显式设置 AI_PROMPT 时，用该规则选择默认提示词文件。
+    """
+
+    lang = ai_language(settings)
+    template = ai_prompt_template(settings)
+
+    if template == "optimized":
+        return f"AI_PROMPT_Optimized.{lang}.json"
+    return f"AI_PROMPT_Default.{lang}.json"

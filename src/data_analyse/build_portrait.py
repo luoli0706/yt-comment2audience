@@ -24,7 +24,7 @@ def _ensure_project_root_on_syspath() -> None:
 
 _ensure_project_root_on_syspath()
 
-from src.config import ai_language, db_path, load_settings  # noqa: E402
+from src.config import default_ai_prompt_filename, db_path, load_settings  # noqa: E402
 from src.database.sqlite import (  # noqa: E402
     connect,
     get_ai_portrait,
@@ -66,8 +66,7 @@ def _resolve_prompt_path() -> Path:
                 return candidate
 
     settings = load_settings()
-    lang = ai_language(settings)
-    p = project_root / "AI_PROMPT" / f"AI_PROMPT_Default.{lang}.json"
+    p = project_root / "AI_PROMPT" / default_ai_prompt_filename(settings)
     if p.exists():
         return p
 

@@ -24,7 +24,7 @@ from src.ai.deepseek_client import (  # noqa: E402
     extract_message_content,
     load_ai_config_from_env,
 )
-from src.config import ai_language, load_settings  # noqa: E402
+from src.config import default_ai_prompt_filename, load_settings  # noqa: E402
 
 
 def _resolve_base_url() -> str:
@@ -92,8 +92,7 @@ def _resolve_prompt_path(cli_value: str | None) -> Path:
 
     # 3) Default based on settings.json ai.language (default zh)
     settings = load_settings()
-    lang = ai_language(settings)
-    default_path = project_root / "AI_PROMPT" / f"AI_PROMPT_Default.{lang}.json"
+    default_path = project_root / "AI_PROMPT" / default_ai_prompt_filename(settings)
     if default_path.exists():
         return default_path
 
