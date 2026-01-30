@@ -50,3 +50,23 @@ def db_path(settings: Dict[str, Any]) -> Path:
     if not path.is_absolute():
         path = project_root() / path
     return path
+
+
+def ai_language(settings: Dict[str, Any]) -> str:
+    """Preferred AI prompt language.
+
+    EN: Used to select the default system prompt when AI_PROMPT is not explicitly set.
+    中文：当未显式设置 AI_PROMPT 时，用于选择默认 system prompt。
+
+    Supported: zh | en
+    """
+
+    raw = settings.get("ai", {}).get("language", "zh")
+    raw = str(raw).strip().lower()
+
+    if raw in {"zh", "zh-cn", "zh-hans", "chinese", "cn"}:
+        return "zh"
+    if raw in {"en", "en-us", "english"}:
+        return "en"
+
+    raise ValueError(f"Unknown ai.language in settings.json: {raw}")

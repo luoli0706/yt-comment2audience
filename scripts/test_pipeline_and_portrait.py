@@ -24,6 +24,7 @@ from src.ai.deepseek_client import (  # noqa: E402
     extract_message_content,
     load_ai_config_from_env,
 )
+from src.config import ai_language, load_settings  # noqa: E402
 
 
 def _resolve_base_url() -> str:
@@ -41,25 +42,63 @@ def _load_prompt_json(path: Path) -> Dict[str, Any]:
     return data
 
 
-def _resolve_prompt_path(cli_value: str | None) -> Path:
-    raw = (cli_value or os.getenv("AI_PROMPT") or "AI_PROMPT/AI_PROMPT_Default.json").strip()
-    raw = raw.strip('"')
-    p = Path(raw)
-    if not p.is_absolute():
-        p = Path(__file__).resolve().parents[1] / p
+def _extract_json_text(raw: str) -> str:
+    """Best-effort JSON extractor.
 
-    if p.exists():
+    EN: Some models return JSON wrapped in markdown code fences.
+    中文：部分模型会把 JSON 包在 markdown 代码块里，这里做一次兼容抽取。
+    """
+
+    s = (raw or "").strip()
+    if s.startswith("```"):
+        lines = s.splitlines()
+        if len(lines) >= 3 and lines[-1].strip().startswith("```"):
+            s = "\n".join(lines[1:-1]).strip()
+    # Try to slice the first JSON object/array.
+    obj_start = s.find("{")
+    obj_end = s.rfind("}")
+    arr_start = s.find("[")
+    arr_end = s.rfind("]")
+    if obj_start != -1 and obj_end != -1 and obj_end > obj_start:
+        return s[obj_start : obj_end + 1]
+    if arr_start != -1 and arr_end != -1 and arr_end > arr_start:
+        return s[arr_start : arr_end + 1]
+    return s
+
+
+def _resolve_prompt_path(cli_value: str | None) -> Path:
+    project_root = Path(__file__).resolve().parents[1]
+
+    # 1) CLI override
+    if cli_value:
+        raw = str(cli_value).strip().strip('"')
+        p = Path(raw)
+        if not p.is_absolute():
+            p = project_root / p
         return p
 
-    # EN: Backward-compatible fallback if env still points to the old .txt prompt.
-    # 中文：兼容旧配置：如果仍指向已删除的 .txt，自动尝试同名 .json。
-    if p.suffix.lower() == ".txt":
-        candidate = p.with_suffix(".json")
-        if candidate.exists():
-            return candidate
+    # 2) Env override
+    env_value = (os.getenv("AI_PROMPT") or "").strip().strip('"')
+    if env_value:
+        p = Path(env_value)
+        if not p.is_absolute():
+            p = project_root / p
+        if p.exists():
+            return p
+        if p.suffix.lower() == ".txt":
+            candidate = p.with_suffix(".json")
+            if candidate.exists():
+                return candidate
 
-    default_path = Path(__file__).resolve().parents[1] / "AI_PROMPT" / "AI_PROMPT_Default.json"
-    return default_path
+    # 3) Default based on settings.json ai.language (default zh)
+    settings = load_settings()
+    lang = ai_language(settings)
+    default_path = project_root / "AI_PROMPT" / f"AI_PROMPT_Default.{lang}.json"
+    if default_path.exists():
+        return default_path
+
+    # 4) Final fallback for legacy setups
+    return project_root / "AI_PROMPT" / "AI_PROMPT_Default.json"
 
 
 def _pipeline_call(*, base_url: str, url: str, order: str, max_comments: int) -> Dict[str, Any]:
@@ -171,7 +210,7 @@ def main() -> int:
 
     print("# Portrait result")
     try:
-        parsed = json.loads(raw)
+        parsed = json.loads(_extract_json_text(raw))
         print(json.dumps(parsed, ensure_ascii=False, indent=2))
         return 0
     except Exception:  # noqa: BLE001

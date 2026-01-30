@@ -24,7 +24,7 @@ def _ensure_project_root_on_syspath() -> None:
 
 _ensure_project_root_on_syspath()
 
-from src.config import db_path, load_settings  # noqa: E402
+from src.config import ai_language, db_path, load_settings  # noqa: E402
 from src.database.sqlite import (  # noqa: E402
     connect,
     get_ai_portrait,
@@ -51,11 +51,45 @@ def _load_prompt_file(path: Path) -> Dict[str, Any]:
 
 
 def _resolve_prompt_path() -> Path:
-    raw = os.getenv("AI_PROMPT", "AI_PROMPT/AI_PROMPT_Default.json").strip().strip('"')
-    p = Path(raw)
-    if not p.is_absolute():
-        p = Path(__file__).resolve().parents[2] / p
-    return p
+    project_root = Path(__file__).resolve().parents[2]
+
+    env_value = (os.getenv("AI_PROMPT") or "").strip().strip('"')
+    if env_value:
+        p = Path(env_value)
+        if not p.is_absolute():
+            p = project_root / p
+        if p.exists():
+            return p
+        if p.suffix.lower() == ".txt":
+            candidate = p.with_suffix(".json")
+            if candidate.exists():
+                return candidate
+
+    settings = load_settings()
+    lang = ai_language(settings)
+    p = project_root / "AI_PROMPT" / f"AI_PROMPT_Default.{lang}.json"
+    if p.exists():
+        return p
+
+    return project_root / "AI_PROMPT" / "AI_PROMPT_Default.json"
+
+
+def _extract_json_text(raw: str) -> str:
+    s = (raw or "").strip()
+    if s.startswith("```"):
+        lines = s.splitlines()
+        if len(lines) >= 3 and lines[-1].strip().startswith("```"):
+            s = "\n".join(lines[1:-1]).strip()
+
+    obj_start = s.find("{")
+    obj_end = s.rfind("}")
+    arr_start = s.find("[")
+    arr_end = s.rfind("]")
+    if obj_start != -1 and obj_end != -1 and obj_end > obj_start:
+        return s[obj_start : obj_end + 1]
+    if arr_start != -1 and arr_end != -1 and arr_end > arr_start:
+        return s[arr_start : arr_end + 1]
+    return s
 
 
 def main() -> int:
@@ -148,7 +182,7 @@ def main() -> int:
         error: Optional[str] = None
 
         try:
-            parsed = json.loads(raw_content)
+            parsed = json.loads(_extract_json_text(raw_content))
             portrait_json = json.dumps(parsed, ensure_ascii=False)
             parse_ok = True
         except Exception as e:  # noqa: BLE001
