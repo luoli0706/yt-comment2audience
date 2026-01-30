@@ -180,6 +180,23 @@ def init_schema(conn: sqlite3.Connection) -> None:
             FOREIGN KEY(raw_thread_id) REFERENCES raw_comment_threads(id) ON DELETE CASCADE,
             UNIQUE(run_id, comment_id)
         );
+
+        CREATE TABLE IF NOT EXISTS ai_portraits (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            model TEXT NOT NULL,
+            prompt_name TEXT,
+            prompt_version INTEGER,
+            input_json TEXT NOT NULL,
+            portrait_json TEXT,
+            portrait_raw TEXT,
+            parse_ok INTEGER NOT NULL,
+            error TEXT,
+            FOREIGN KEY(run_id) REFERENCES collection_runs(id) ON DELETE CASCADE,
+            UNIQUE(run_id)
+        );
         """
     )
     conn.commit()
@@ -324,3 +341,65 @@ def iter_clean_comments(conn: sqlite3.Connection, run_id: int) -> Iterable[sqlit
         """,
         (int(run_id),),
     )
+
+
+def upsert_ai_portrait(
+    conn: sqlite3.Connection,
+    *,
+    run_id: int,
+    provider: str,
+    model: str,
+    prompt_name: str | None,
+    prompt_version: int | None,
+    input_json: str,
+    portrait_json: str | None,
+    portrait_raw: str | None,
+    parse_ok: bool,
+    error: str | None,
+) -> None:
+    """Insert or replace portrait result for a run.
+
+    EN: One portrait per run_id.
+    中文：每个 run_id 只保留一条画像记录（重复生成会覆盖）。
+    """
+
+    conn.execute(
+        """
+        INSERT INTO ai_portraits (
+            run_id, created_at, provider, model,
+            prompt_name, prompt_version,
+            input_json, portrait_json, portrait_raw,
+            parse_ok, error
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(run_id) DO UPDATE SET
+            created_at=excluded.created_at,
+            provider=excluded.provider,
+            model=excluded.model,
+            prompt_name=excluded.prompt_name,
+            prompt_version=excluded.prompt_version,
+            input_json=excluded.input_json,
+            portrait_json=excluded.portrait_json,
+            portrait_raw=excluded.portrait_raw,
+            parse_ok=excluded.parse_ok,
+            error=excluded.error
+        """,
+        (
+            int(run_id),
+            utc_now_iso(),
+            provider,
+            model,
+            prompt_name,
+            prompt_version,
+            input_json,
+            portrait_json,
+            portrait_raw,
+            1 if parse_ok else 0,
+            error,
+        ),
+    )
+
+
+def get_ai_portrait(conn: sqlite3.Connection, run_id: int) -> Optional[sqlite3.Row]:
+    return conn.execute(
+        "SELECT * FROM ai_portraits WHERE run_id = ? LIMIT 1", (int(run_id),)
+    ).fetchone()

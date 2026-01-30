@@ -5,6 +5,7 @@ import os
 import sys
 
 import requests
+from dotenv import load_dotenv
 
 
 def main() -> int:
@@ -18,7 +19,13 @@ def main() -> int:
     - Endpoint: POST /api/pipeline
     """
 
-    base_url = os.getenv("BASE_URL", "http://127.0.0.1:5076").rstrip("/")
+    load_dotenv()
+
+    # EN: Prefer explicit BASE_URL; otherwise build from HOST/PORT in .env.
+    # 中文：优先使用 BASE_URL；否则读取 .env 的 HOST/PORT 组装。
+    host = os.getenv("HOST", "127.0.0.1").strip() or "127.0.0.1"
+    port = os.getenv("PORT", "5076").strip() or "5076"
+    base_url = os.getenv("BASE_URL", f"http://{host}:{port}").rstrip("/")
     endpoint = f"{base_url}/api/pipeline"
 
     payload = {
