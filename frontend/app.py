@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import flet as ft
 
-from frontend.config import load_frontend_env, server_url
-from frontend.pages import generate_view, main_view, portrait_detail_view, query_view
+# NOTE: When running `python frontend/app.py`, the script directory is on sys.path,
+# so we import local modules directly.
+from config import load_frontend_env, server_url
+from pages import generate_view, main_view, portrait_detail_view, query_view
 
 
 def main(page: ft.Page) -> None:
