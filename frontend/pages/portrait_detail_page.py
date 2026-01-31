@@ -127,10 +127,14 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
             return
         _load_portrait()
 
+    def _go_back(_: ft.ControlEvent) -> None:
+        prev = (page.data or {}).get("prev_route") or "/portraits"
+        page.go(str(prev))
+
     controls = [
         ft.AppBar(
             title=ft.Text("画像详情"),
-            leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/portraits")),
+            leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=_go_back),
             actions=[ft.IconButton(ft.icons.REFRESH, on_click=lambda _: _load_portrait())],
         ),
         meta,

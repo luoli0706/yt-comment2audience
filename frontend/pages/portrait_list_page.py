@@ -46,6 +46,7 @@ def portrait_list_view(page: ft.Page, server_url: str) -> ft.View:
                                 "画像查询",
                                 on_click=lambda e, rid=run_id: (
                                     page.data.__setitem__("selected_run_id", rid),
+                                    page.data.__setitem__("prev_route", "/portraits"),
                                     page.go("/portrait-detail"),
                                 ),
                             )

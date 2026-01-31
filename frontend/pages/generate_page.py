@@ -71,6 +71,7 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
         _set_output(data)
         if isinstance(data, dict) and data.get("ok") is True:
             page.data["selected_run_id"] = last_run_id
+            page.data["prev_route"] = "/generate"
             page.go("/portrait-detail")
 
     left = ft.Column(
