@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .collection_detail_page import collection_detail_view
 from .collection_list_page import collection_list_view
 from .generate_page import generate_view
 from .main_page import main_view
@@ -14,4 +15,5 @@ __all__ = [
 	"portrait_detail_view",
 	"portrait_list_view",
 	"collection_list_view",
+	"collection_detail_view",
 ]

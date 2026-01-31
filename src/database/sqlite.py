@@ -461,6 +461,36 @@ def list_collection_runs(conn: sqlite3.Connection) -> Iterable[sqlite3.Row]:
     )
 
 
+def get_collection_run_detail(conn: sqlite3.Connection, run_id: int) -> Optional[sqlite3.Row]:
+    return conn.execute(
+        """
+        SELECT id AS run_id,
+               video_id,
+               video_url,
+               video_title,
+               channel_title,
+               channel_id,
+               collected_at,
+               order_mode,
+               max_comments,
+               (
+                   SELECT COUNT(1)
+                   FROM raw_comment_threads t
+                   WHERE t.run_id = collection_runs.id
+               ) AS raw_count,
+               (
+                   SELECT COUNT(1)
+                   FROM clean_comments c
+                   WHERE c.run_id = collection_runs.id
+               ) AS clean_count
+        FROM collection_runs
+        WHERE id = ?
+        LIMIT 1
+        """,
+        (int(run_id),),
+    ).fetchone()
+
+
 def list_ai_portraits(conn: sqlite3.Connection) -> Iterable[sqlite3.Row]:
     return conn.execute(
         """

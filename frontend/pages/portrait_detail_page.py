@@ -34,37 +34,28 @@ def _pie_chart(title: str, data: Dict[str, Any]) -> ft.Control:
     )
 
 
-def _bar_chart(title: str, items: list[dict], key_name: str, key_value: str) -> ft.Control:
+def _progress_list(title: str, items: list[dict], key_name: str, key_value: str) -> ft.Control:
     if not items:
         return ft.Text(f"{title}: 无数据")
 
-    groups = []
+    rows = [ft.Text(title, weight=ft.FontWeight.W_600)]
     for item in items:
         label = str(item.get(key_name, ""))
         try:
             val = float(item.get(key_value, 0) or 0)
         except Exception:
             val = 0.0
-        groups.append(
-            ft.BarChartGroup(
-                x=label,
-                bar_rods=[ft.BarChartRod(from_y=0, to_y=val)],
+        rows.append(
+            ft.Row(
+                [
+                    ft.Text(label, width=200, max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
+                    ft.ProgressBar(value=max(0.0, min(1.0, val)), width=220),
+                    ft.Text(f"{val:.2f}", width=50),
+                ]
             )
         )
 
-    return ft.Column(
-        controls=[
-            ft.Text(title, weight=ft.FontWeight.W_600),
-            ft.BarChart(
-                bar_groups=groups,
-                groups_space=12,
-                border=ft.Border.all(1, ft.colors.GREY_300),
-                max_y=1.0,
-                expand=True,
-            ),
-        ],
-        spacing=8,
-    )
+    return ft.Column(controls=rows, spacing=6)
 
 
 def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
@@ -73,13 +64,18 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
     tags = ft.Text("", selectable=True)
     meta = ft.Text("", size=12, color=ft.colors.GREY_600)
 
+    left_container = ft.Column(spacing=8, width=520)
     charts_container = ft.Column(spacing=12, expand=True)
+
+    def _safe_update(ctrl: ft.Control) -> None:
+        if getattr(ctrl, "page", None) is not None:
+            ctrl.update()
 
     def _load_portrait() -> None:
         run_id = (page.data or {}).get("selected_run_id")
         if not run_id:
             status.value = "未选择 run_id，请从列表进入。"
-            status.update()
+            _safe_update(status)
             return
 
         try:
@@ -91,12 +87,12 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
             data = resp.json()
         except Exception as e:  # noqa: BLE001
             status.value = f"请求失败: {e}"
-            status.update()
+            _safe_update(status)
             return
 
         if not data.get("ok"):
             status.value = f"服务端错误: {data}"
-            status.update()
+            _safe_update(status)
             return
 
         portrait = data.get("portrait") or {}
@@ -106,23 +102,49 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
             f"run_id={data.get('run_id')} | 标题: {data.get('video_title') or ''} | 频道: {data.get('channel_title') or ''}"
         )
 
-        summary.update()
-        tags.update()
-        meta.update()
+        insights = portrait.get("audience_insights") or {}
+        left_container.controls = [
+            meta,
+            ft.Text("摘要"),
+            summary,
+            ft.Text("标签"),
+            tags,
+            ft.Text("兴趣"),
+            ft.Text("、".join(insights.get("interests") or []), selectable=True),
+            ft.Text("价值观"),
+            ft.Text("、".join(insights.get("values") or []), selectable=True),
+            ft.Text("内容偏好"),
+            ft.Text("、".join(insights.get("content_preferences") or []), selectable=True),
+            ft.Row(
+                controls=[
+                    ft.ElevatedButton("生成画像", on_click=on_generate_click),
+                    ft.OutlinedButton("刷新", on_click=lambda _: _load_portrait()),
+                ]
+            ),
+        ]
+
         status.value = ""
-        status.update()
         charts_container.controls = [
             _pie_chart("语言分布", portrait.get("language_distribution") or {}),
             _pie_chart("情感分布", portrait.get("sentiment") or {}),
-            _bar_chart("核心话题权重", portrait.get("topics") or [], "name", "weight"),
+            _progress_list("核心话题权重", portrait.get("topics") or [], "name", "weight"),
+            _progress_list(
+                "置信度",
+                [{"name": "confidence", "weight": portrait.get("confidence") or 0}],
+                "name",
+                "weight",
+            ),
         ]
-        charts_container.update()
+
+        _safe_update(left_container)
+        _safe_update(status)
+        _safe_update(charts_container)
 
     def on_generate_click(_: ft.ControlEvent) -> None:
         run_id = (page.data or {}).get("selected_run_id")
         if not run_id:
             status.value = "未选择 run_id"
-            status.update()
+            _safe_update(status)
             return
         try:
             resp = requests.post(
@@ -133,11 +155,11 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
             data = resp.json()
         except Exception as e:  # noqa: BLE001
             status.value = f"请求失败: {e}"
-            status.update()
+            _safe_update(status)
             return
         if not data.get("ok"):
             status.value = f"服务端错误: {data}"
-            status.update()
+            _safe_update(status)
             return
         _load_portrait()
 
@@ -151,25 +173,10 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
             leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=_go_back),
             actions=[ft.IconButton(ft.icons.REFRESH, on_click=lambda _: _load_portrait())],
         ),
-        meta,
         status,
         ft.Row(
             controls=[
-                ft.Column(
-                    controls=[
-                        ft.Text("摘要"),
-                        summary,
-                        ft.Text("标签"),
-                        tags,
-                        ft.Row(
-                            controls=[
-                                ft.ElevatedButton("生成画像", on_click=on_generate_click),
-                                ft.OutlinedButton("刷新", on_click=lambda _: _load_portrait()),
-                            ]
-                        ),
-                    ],
-                    width=420,
-                ),
+                left_container,
                 charts_container,
             ],
             expand=True,
@@ -177,6 +184,5 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
     ]
 
     view = ft.View(route="/portrait-detail", controls=controls, padding=20)
-    # Load once on enter
-    _load_portrait()
+    view.on_mount = lambda _: _load_portrait()
     return view

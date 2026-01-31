@@ -34,6 +34,12 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
         rows = []
         for it in items:
             run_id = it.get("run_id")
+
+            def _on_detail(e: ft.ControlEvent, rid=run_id) -> None:
+                page.data["selected_run_id"] = rid
+                page.data["prev_route"] = "/collections"
+                page.go("/collections/detail")
+
             def _on_delete(e: ft.ControlEvent, rid=run_id) -> None:
                 try:
                     resp = requests.post(
@@ -65,7 +71,14 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
                         ft.DataCell(ft.Text(str(it.get("collected_at") or ""))),
                         ft.DataCell(ft.Text(str(it.get("raw_count") or ""))),
                         ft.DataCell(ft.Text(str(it.get("clean_count") or ""))),
-                        ft.DataCell(ft.OutlinedButton("删除", on_click=_on_delete)),
+                        ft.DataCell(
+                            ft.Row(
+                                [
+                                    ft.OutlinedButton("详情", on_click=_on_detail),
+                                    ft.OutlinedButton("删除", on_click=_on_delete),
+                                ]
+                            )
+                        ),
                     ]
                 )
             )

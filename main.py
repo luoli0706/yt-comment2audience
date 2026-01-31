@@ -369,6 +369,50 @@ def collections_delete():
         conn.close()
 
 
+@app.post("/api/collections/detail")
+def collections_detail():
+    payload: Dict[str, Any] = request.get_json(silent=True) or {}
+    run_id_raw = payload.get("run_id")
+    if run_id_raw in (None, ""):
+        return jsonify({"ok": False, "error": "Missing run_id"}), 400
+
+    try:
+        run_id = int(run_id_raw)
+    except Exception:
+        return jsonify({"ok": False, "error": "run_id must be int"}), 400
+    if run_id <= 0:
+        return jsonify({"ok": False, "error": "run_id must be positive int"}), 400
+
+    from src.config import db_path, load_settings  # noqa: WPS433
+    from src.database.sqlite import connect, get_collection_run_detail, init_schema  # noqa: WPS433
+
+    settings = load_settings()
+    conn = connect(db_path(settings))
+    try:
+        init_schema(conn)
+        row = get_collection_run_detail(conn, run_id)
+        if row is None:
+            return jsonify({"ok": False, "error": "collection not found"}), 404
+        return jsonify(
+            {
+                "ok": True,
+                "run_id": row["run_id"],
+                "video_id": row["video_id"],
+                "video_url": row["video_url"],
+                "video_title": row["video_title"],
+                "channel_title": row["channel_title"],
+                "channel_id": row["channel_id"],
+                "collected_at": row["collected_at"],
+                "order_mode": row["order_mode"],
+                "max_comments": row["max_comments"],
+                "raw_count": row["raw_count"],
+                "clean_count": row["clean_count"],
+            }
+        )
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     app.run(
         host=os.getenv("HOST", "127.0.0.1"),

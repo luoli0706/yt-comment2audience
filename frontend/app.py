@@ -6,6 +6,7 @@ import flet as ft
 # so we import local modules directly.
 from config import load_frontend_env, server_url
 from pages import (
+    collection_detail_view,
     collection_list_view,
     generate_view,
     main_view,
@@ -36,6 +37,8 @@ def main(page: ft.Page) -> None:
             page.views.append(portrait_list_view(page, server_url()))
         elif page.route == "/collections":
             page.views.append(collection_list_view(page, server_url()))
+        elif page.route == "/collections/detail":
+            page.views.append(collection_detail_view(page, server_url()))
         else:
             page.views.append(main_view(page, server_url()))
         page.update()
