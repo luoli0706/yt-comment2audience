@@ -78,7 +78,7 @@ def _bar_chart(title: str, data: Dict[str, Any]) -> ft.Control:
             )
         )
 
-    labels = [str(k) for k in data.keys()]
+    labels = [ft.ChartAxisLabel(value=i, label=ft.Text(str(k))) for i, k in enumerate(data.keys())]
 
     return ft.Column(
         controls=[
