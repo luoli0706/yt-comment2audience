@@ -25,7 +25,8 @@ A minimal Flask + SQLite pipeline demo (YouTube comments → audience portrait):
 
 Required:
 - `YOUTUBE_API_KEY`
- - `AI_API_KEY`
+- `AI_API_KEY`
+- `YOUTUBE_API_VIDEOS_URL`（用于获取视频标题/频道信息）
 
 说明：`.env` 不会被 git 追踪。
 Note: `.env` is not tracked by git.
@@ -52,7 +53,7 @@ This repo tracks the `.venv` folder, but does NOT track dependency payload (site
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install Flask python-dotenv requests
+pip install -r requirements.txt
 ```
 
 ## 初始化数据库 / Init DB
@@ -183,7 +184,10 @@ Licensed under the Apache License 2.0. See [LICENSE](LICENSE).
 ## Frontend (Flet)
 
 在 [frontend/](frontend/) 提供一个基础 Flet 图形界面：
-- 主页面包含两个路由按钮：查询画像 / 画像生成（当前为占位页面）
+- 主页面包含两个路由按钮：查询画像 / 画像生成
+- 查询画像页：画像总表、原始数据总表（支持拖动横向滚动）
+- 画像详情页：左侧文本摘要+右侧图表（自动刷新）
+- 原始数据详情页：详情面板+JSON 视图（自动刷新）
 - 服务端地址通过 `frontend/.env` 中的 `SERVER_URL` 配置（默认 http://127.0.0.1:5076）
 
 运行示例（需先安装 flet）：
