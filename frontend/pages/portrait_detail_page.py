@@ -109,7 +109,7 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
             return ft.Container(
                 content=ft.Column([ft.Text(title, weight=ft.FontWeight.W_600), body], spacing=6),
                 padding=12,
-                border=ft.Border.all(1, ft.colors.GREY_300),
+                border=ft.border.all(1, ft.colors.GREY_300),
                 border_radius=8,
             )
 
