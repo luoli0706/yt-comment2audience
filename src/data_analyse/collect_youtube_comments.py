@@ -150,6 +150,38 @@ def fetch_comment_threads(
     return items
 
 
+def fetch_video_metadata(
+    *,
+    video_id: str,
+    api_key: str,
+    base_url: str,
+    retry_times: int,
+    retry_interval: int,
+) -> Dict[str, Any]:
+    params: Dict[str, Any] = {
+        "part": "snippet",
+        "id": video_id,
+        "key": api_key,
+    }
+    data = _request_with_retries(
+        base_url,
+        params=params,
+        retry_times=retry_times,
+        retry_interval=retry_interval,
+    )
+    items = data.get("items") or []
+    if not items or not isinstance(items, list):
+        return {}
+    snippet = items[0].get("snippet") or {}
+    if not isinstance(snippet, dict):
+        return {}
+    return {
+        "video_title": snippet.get("title"),
+        "channel_title": snippet.get("channelTitle"),
+        "channel_id": snippet.get("channelId"),
+    }
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     load_dotenv()
     settings = load_settings()
@@ -214,6 +246,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     base_url = os.getenv(
         "YOUTUBE_API_URL", "https://www.googleapis.com/youtube/v3/commentThreads"
     ).strip()
+    video_base_url = os.getenv(
+        "YOUTUBE_API_VIDEOS_URL", "https://www.googleapis.com/youtube/v3/videos"
+    ).strip()
 
     retry_times = _env_int("RETRY_TIMES", 3)
     retry_interval = _env_int("RETRY_INTERVAL", 5)
@@ -232,6 +267,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         retry_interval=max(0, retry_interval),
     )
 
+    meta = fetch_video_metadata(
+        video_id=video_id,
+        api_key=api_key,
+        base_url=video_base_url,
+        retry_times=max(0, retry_times),
+        retry_interval=max(0, retry_interval),
+    )
+
     payload = {"video_id": video_id, "count": len(items), "items": items}
 
     if not args.no_db:
@@ -244,6 +287,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 video_url=args.url,
                 order_mode=order_mode,
                 max_comments=max(1, int(args.max_results)),
+                video_title=str(meta.get("video_title") or "") or None,
+                channel_title=str(meta.get("channel_title") or "") or None,
+                channel_id=str(meta.get("channel_id") or "") or None,
             )
             for item in items:
                 insert_raw_thread(conn, run_id=run_id, video_id=video_id, item=item)

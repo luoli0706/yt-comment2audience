@@ -199,7 +199,21 @@ def init_schema(conn: sqlite3.Connection) -> None:
         );
         """
     )
+    _ensure_collection_run_columns(conn)
     conn.commit()
+
+
+def _ensure_collection_run_columns(conn: sqlite3.Connection) -> None:
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(collection_runs)").fetchall()}
+    alter_stmts = []
+    if "video_title" not in cols:
+        alter_stmts.append("ALTER TABLE collection_runs ADD COLUMN video_title TEXT")
+    if "channel_title" not in cols:
+        alter_stmts.append("ALTER TABLE collection_runs ADD COLUMN channel_title TEXT")
+    if "channel_id" not in cols:
+        alter_stmts.append("ALTER TABLE collection_runs ADD COLUMN channel_id TEXT")
+    for stmt in alter_stmts:
+        conn.execute(stmt)
 
 
 def insert_collection_run(
@@ -209,13 +223,27 @@ def insert_collection_run(
     video_url: str,
     order_mode: str,
     max_comments: int,
+    video_title: str | None = None,
+    channel_title: str | None = None,
+    channel_id: str | None = None,
 ) -> int:
     cur = conn.execute(
         """
-        INSERT INTO collection_runs (video_id, video_url, collected_at, order_mode, max_comments)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO collection_runs (
+            video_id, video_url, collected_at, order_mode, max_comments,
+            video_title, channel_title, channel_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (video_id, video_url, utc_now_iso(), order_mode, int(max_comments)),
+        (
+            video_id,
+            video_url,
+            utc_now_iso(),
+            order_mode,
+            int(max_comments),
+            video_title,
+            channel_title,
+            channel_id,
+        ),
     )
     conn.commit()
     return int(cur.lastrowid)
@@ -403,6 +431,47 @@ def get_ai_portrait(conn: sqlite3.Connection, run_id: int) -> Optional[sqlite3.R
     return conn.execute(
         "SELECT * FROM ai_portraits WHERE run_id = ? LIMIT 1", (int(run_id),)
     ).fetchone()
+
+
+def list_collection_runs(conn: sqlite3.Connection) -> Iterable[sqlite3.Row]:
+    return conn.execute(
+        """
+        SELECT id AS run_id,
+               video_id,
+               video_url,
+               video_title,
+               channel_title,
+               channel_id,
+               collected_at,
+               order_mode,
+               max_comments
+        FROM collection_runs
+        ORDER BY id DESC
+        """
+    )
+
+
+def list_ai_portraits(conn: sqlite3.Connection) -> Iterable[sqlite3.Row]:
+    return conn.execute(
+        """
+        SELECT p.run_id,
+               p.created_at AS portrait_created_at,
+               p.parse_ok,
+               p.prompt_name,
+               p.prompt_version,
+               p.provider,
+               p.model,
+               r.video_id,
+               r.video_url,
+               r.video_title,
+               r.channel_title,
+               r.channel_id,
+               r.collected_at
+        FROM ai_portraits p
+        JOIN collection_runs r ON r.id = p.run_id
+        ORDER BY p.created_at DESC
+        """
+    )
 
 
 def delete_ai_portrait(conn: sqlite3.Connection, run_id: int) -> int:

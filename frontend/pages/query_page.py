@@ -79,6 +79,12 @@ def query_view(page: ft.Page, server_url: str) -> ft.View:
                     ft.OutlinedButton("删除", on_click=on_delete_click),
                 ]
             ),
+            ft.Row(
+                controls=[
+                    ft.OutlinedButton("画像总表", on_click=lambda _: page.go("/portraits")),
+                    ft.OutlinedButton("原始数据总表", on_click=lambda _: page.go("/collections")),
+                ]
+            ),
             ft.Text(f"服务端：{server_url}", size=12, color=ft.colors.GREY_600),
         ],
         width=260,

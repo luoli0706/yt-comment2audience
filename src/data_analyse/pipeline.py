@@ -27,6 +27,7 @@ from src.config import db_path, load_settings  # noqa: E402
 from src.data_analyse.collect_youtube_comments import (  # noqa: E402
     _parse_video_id,
     fetch_comment_threads,
+    fetch_video_metadata,
 )
 from src.database.sqlite import (  # noqa: E402
     connect,
@@ -64,6 +65,9 @@ def collect_raw_to_db(
     base_url = os.getenv(
         "YOUTUBE_API_URL", "https://www.googleapis.com/youtube/v3/commentThreads"
     ).strip()
+    video_base_url = os.getenv(
+        "YOUTUBE_API_VIDEOS_URL", "https://www.googleapis.com/youtube/v3/videos"
+    ).strip()
 
     retry_times = int(os.getenv("RETRY_TIMES", "3") or 3)
     retry_interval = int(os.getenv("RETRY_INTERVAL", "5") or 5)
@@ -84,6 +88,14 @@ def collect_raw_to_db(
         retry_interval=max(0, int(retry_interval)),
     )
 
+    meta = fetch_video_metadata(
+        video_id=video_id,
+        api_key=api_key,
+        base_url=video_base_url,
+        retry_times=max(0, int(retry_times)),
+        retry_interval=max(0, int(retry_interval)),
+    )
+
     conn = connect(db_path(settings))
     try:
         init_schema(conn)
@@ -93,6 +105,9 @@ def collect_raw_to_db(
             video_url=url,
             order_mode=order_mode,
             max_comments=max(1, int(max_comments)),
+            video_title=str(meta.get("video_title") or "") or None,
+            channel_title=str(meta.get("channel_title") or "") or None,
+            channel_id=str(meta.get("channel_id") or "") or None,
         )
         for item in items:
             insert_raw_thread(conn, run_id=run_id, video_id=video_id, item=item)

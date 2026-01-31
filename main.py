@@ -265,6 +265,68 @@ def portrait_delete():
         conn.close()
 
 
+@app.get("/api/portraits")
+def portraits_list():
+    from src.config import db_path, load_settings  # noqa: WPS433
+    from src.database.sqlite import connect, init_schema, list_ai_portraits  # noqa: WPS433
+
+    settings = load_settings()
+    conn = connect(db_path(settings))
+    try:
+        init_schema(conn)
+        rows = list(list_ai_portraits(conn))
+        items = [
+            {
+                "run_id": r["run_id"],
+                "video_id": r["video_id"],
+                "video_url": r["video_url"],
+                "video_title": r["video_title"],
+                "channel_title": r["channel_title"],
+                "channel_id": r["channel_id"],
+                "collected_at": r["collected_at"],
+                "portrait_created_at": r["portrait_created_at"],
+                "parse_ok": bool(r["parse_ok"]),
+                "prompt_name": r["prompt_name"],
+                "prompt_version": r["prompt_version"],
+                "provider": r["provider"],
+                "model": r["model"],
+            }
+            for r in rows
+        ]
+        return jsonify({"ok": True, "count": len(items), "items": items})
+    finally:
+        conn.close()
+
+
+@app.get("/api/collections")
+def collections_list():
+    from src.config import db_path, load_settings  # noqa: WPS433
+    from src.database.sqlite import connect, init_schema, list_collection_runs  # noqa: WPS433
+
+    settings = load_settings()
+    conn = connect(db_path(settings))
+    try:
+        init_schema(conn)
+        rows = list(list_collection_runs(conn))
+        items = [
+            {
+                "run_id": r["run_id"],
+                "video_id": r["video_id"],
+                "video_url": r["video_url"],
+                "video_title": r["video_title"],
+                "channel_title": r["channel_title"],
+                "channel_id": r["channel_id"],
+                "collected_at": r["collected_at"],
+                "order_mode": r["order_mode"],
+                "max_comments": r["max_comments"],
+            }
+            for r in rows
+        ]
+        return jsonify({"ok": True, "count": len(items), "items": items})
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     app.run(
         host=os.getenv("HOST", "127.0.0.1"),
