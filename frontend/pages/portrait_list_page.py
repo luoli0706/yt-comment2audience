@@ -100,6 +100,6 @@ def portrait_list_view(page: ft.Page, server_url: str) -> ft.View:
         ],
         padding=20,
     )
-
+    view.data = {"refresh": on_refresh}
     view.on_mount = lambda _: on_refresh(None)
     return view

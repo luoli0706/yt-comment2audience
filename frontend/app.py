@@ -43,6 +43,14 @@ def main(page: ft.Page) -> None:
             page.views.append(main_view(page, server_url()))
         page.update()
 
+        # Ensure auto-refresh runs after the view is mounted
+        current_view = page.views[-1] if page.views else None
+        refresh = None
+        if current_view is not None and isinstance(getattr(current_view, "data", None), dict):
+            refresh = current_view.data.get("refresh")
+        if callable(refresh):
+            refresh(None)
+
     page.on_route_change = on_route_change
     page.go(page.route or "/")
 
