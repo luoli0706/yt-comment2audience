@@ -14,6 +14,7 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
             ft.DataColumn(ft.Text("collected_at")),
             ft.DataColumn(ft.Text("raw")),
             ft.DataColumn(ft.Text("clean")),
+            ft.DataColumn(ft.Text("action")),
         ],
         rows=[],
         expand=True,
@@ -32,6 +33,24 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
             pass
         rows = []
         for it in items:
+            run_id = it.get("run_id")
+            def _on_delete(e: ft.ControlEvent, rid=run_id) -> None:
+                try:
+                    resp = requests.post(
+                        f"{server_url}/api/collections/delete",
+                        json={"run_id": rid},
+                        timeout=60,
+                    )
+                    data = resp.json()
+                except Exception as ex:  # noqa: BLE001
+                    status.value = f"删除失败: {ex}"
+                    _safe_update(status)
+                    return
+                if not data.get("ok"):
+                    status.value = f"删除失败: {data}"
+                    _safe_update(status)
+                    return
+                on_refresh(None)
             rows.append(
                 ft.DataRow(
                     cells=[
@@ -46,6 +65,7 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
                         ft.DataCell(ft.Text(str(it.get("collected_at") or ""))),
                         ft.DataCell(ft.Text(str(it.get("raw_count") or ""))),
                         ft.DataCell(ft.Text(str(it.get("clean_count") or ""))),
+                        ft.DataCell(ft.OutlinedButton("删除", on_click=_on_delete)),
                     ]
                 )
             )

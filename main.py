@@ -341,6 +341,34 @@ def collections_list():
         conn.close()
 
 
+@app.post("/api/collections/delete")
+def collections_delete():
+    payload: Dict[str, Any] = request.get_json(silent=True) or {}
+    run_id_raw = payload.get("run_id")
+    if run_id_raw in (None, ""):
+        return jsonify({"ok": False, "error": "Missing run_id"}), 400
+
+    try:
+        run_id = int(run_id_raw)
+    except Exception:
+        return jsonify({"ok": False, "error": "run_id must be int"}), 400
+    if run_id <= 0:
+        return jsonify({"ok": False, "error": "run_id must be positive int"}), 400
+
+    from src.config import db_path, load_settings  # noqa: WPS433
+    from src.database.sqlite import connect, delete_collection_run, init_schema  # noqa: WPS433
+
+    settings = load_settings()
+    conn = connect(db_path(settings))
+    try:
+        init_schema(conn)
+        deleted = delete_collection_run(conn, run_id)
+        conn.commit()
+        return jsonify({"ok": True, "run_id": run_id, "deleted": deleted})
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     app.run(
         host=os.getenv("HOST", "127.0.0.1"),

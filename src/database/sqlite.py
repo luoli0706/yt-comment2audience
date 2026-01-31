@@ -487,3 +487,8 @@ def list_ai_portraits(conn: sqlite3.Connection) -> Iterable[sqlite3.Row]:
 def delete_ai_portrait(conn: sqlite3.Connection, run_id: int) -> int:
     cur = conn.execute("DELETE FROM ai_portraits WHERE run_id = ?", (int(run_id),))
     return int(cur.rowcount or 0)
+
+
+def delete_collection_run(conn: sqlite3.Connection, run_id: int) -> int:
+    cur = conn.execute("DELETE FROM collection_runs WHERE id = ?", (int(run_id),))
+    return int(cur.rowcount or 0)

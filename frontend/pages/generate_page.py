@@ -62,7 +62,7 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
             resp = requests.post(
                 f"{server_url}/api/portrait",
                 json={"run_id": last_run_id, "overwrite": True},
-                timeout=300,
+                timeout=600,
             )
             data = resp.json()
         except Exception as e:  # noqa: BLE001
