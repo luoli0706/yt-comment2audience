@@ -109,7 +109,7 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
                     status,
                 ]
             ),
-            ft.Container(content=table, expand=True),
+            ft.Row([table], scroll=ft.ScrollMode.AUTO, expand=True),
         ],
         padding=20,
     )

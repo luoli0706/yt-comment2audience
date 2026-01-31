@@ -43,10 +43,16 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
 
     loading_running = False
 
+    def _can_update(ctrl: ft.Control) -> bool:
+        return getattr(ctrl, "page", None) is not None
+
     def _animate_loading() -> None:
         nonlocal loading_running
         step = 0
         while loading_running:
+            if not _can_update(loading_row):
+                time.sleep(0.1)
+                continue
             for i, dot in enumerate(dots):
                 phase = (step + i) % 6
                 size = 8 + (phase if phase <= 3 else 6 - phase)
@@ -54,7 +60,8 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
                 dot.height = size
                 dot.bgcolor = ft.colors.with_opacity(1.0, ft.colors.BLUE_500)
                 dot.opacity = min(1.0, 0.35 + phase * 0.08)
-            loading_row.update()
+            if _can_update(loading_row):
+                loading_row.update()
             step = (step + 1) % 6
             time.sleep(0.25)
 
@@ -62,7 +69,8 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
         nonlocal loading_running
         loading_running = on
         loading_box.visible = on
-        loading_box.update()
+        if _can_update(loading_box):
+            loading_box.update()
         if on:
             threading.Thread(target=_animate_loading, daemon=True).start()
 
