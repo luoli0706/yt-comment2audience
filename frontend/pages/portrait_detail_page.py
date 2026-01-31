@@ -7,7 +7,7 @@ import flet as ft
 import requests
 
 
-def _pie_chart(title: str, data: Dict[str, Any]) -> ft.Control:
+def _pie_chart(title: str, data: Dict[str, Any], *, width: int = 260) -> ft.Control:
     if not data:
         return ft.Text(f"{title}: 无数据")
 
@@ -51,7 +51,15 @@ def _pie_chart(title: str, data: Dict[str, Any]) -> ft.Control:
             ft.Text(title, weight=ft.FontWeight.W_600),
             ft.Row(
                 [
-                    ft.PieChart(sections=sections, sections_space=2, center_space_radius=18),
+                    ft.Container(
+                        content=ft.PieChart(
+                            sections=sections,
+                            sections_space=2,
+                            center_space_radius=16,
+                        ),
+                        width=width,
+                        height=200,
+                    ),
                     ft.Column(legend_rows, spacing=4),
                 ],
                 spacing=12,
@@ -61,7 +69,7 @@ def _pie_chart(title: str, data: Dict[str, Any]) -> ft.Control:
     )
 
 
-def _bar_chart(title: str, data: Dict[str, Any]) -> ft.Control:
+def _bar_chart(title: str, data: Dict[str, Any], *, width: int = 360) -> ft.Control:
     if not data:
         return ft.Text(f"{title}: 无数据")
 
@@ -83,13 +91,17 @@ def _bar_chart(title: str, data: Dict[str, Any]) -> ft.Control:
     return ft.Column(
         controls=[
             ft.Text(title, weight=ft.FontWeight.W_600),
-            ft.BarChart(
-                bar_groups=groups,
-                groups_space=14,
-                max_y=1.0,
-                border=ft.border.all(1, ft.colors.GREY_300),
-                bottom_axis=ft.ChartAxis(labels=labels, labels_interval=1),
-                left_axis=ft.ChartAxis(labels_interval=0.25),
+            ft.Container(
+                content=ft.BarChart(
+                    bar_groups=groups,
+                    groups_space=14,
+                    max_y=1.0,
+                    border=ft.border.all(1, ft.colors.GREY_300),
+                    bottom_axis=ft.ChartAxis(labels=labels, labels_interval=1),
+                    left_axis=ft.ChartAxis(labels_interval=0.25),
+                ),
+                width=width,
+                height=220,
             ),
         ],
         spacing=8,
@@ -127,7 +139,7 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
     meta = ft.Text("", size=12, color=ft.colors.GREY_600)
 
     left_container = ft.Column(spacing=10, width=520)
-    charts_container = ft.Column(spacing=12, expand=True)
+    charts_container = ft.Column(spacing=12, width=520)
 
     def _safe_update(ctrl: ft.Control) -> None:
         if getattr(ctrl, "page", None) is not None:
@@ -202,10 +214,12 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
 
         charts_container.controls = [
             ft.Text("分布概览", weight=ft.FontWeight.W_600, size=16),
-            _pie_chart("语言分布", language_dist),
-            _bar_chart("语言分布（柱状）", language_dist),
-            _pie_chart("情感分布", sentiment),
-            _bar_chart("情感分布（柱状）", sentiment),
+            _pie_chart("语言分布", language_dist, width=240),
+            _bar_chart("语言分布（柱状）", language_dist, width=420),
+            ft.Divider(),
+            _pie_chart("情感分布", sentiment, width=240),
+            _bar_chart("情感分布（柱状）", sentiment, width=420),
+            ft.Divider(),
             _progress_list("核心话题权重", portrait.get("topics") or [], "name", "weight"),
         ]
 
@@ -246,10 +260,11 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
             ft.Row(
                 controls=[
                     left_container,
+                    ft.VerticalDivider(),
                     charts_container,
                 ],
                 expand=True,
-                spacing=16,
+                spacing=12,
             ),
         ],
         expand=True,
