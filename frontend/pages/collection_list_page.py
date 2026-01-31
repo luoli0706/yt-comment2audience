@@ -21,6 +21,10 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
 
     status = ft.Text("", size=12, color=ft.colors.GREY_600)
 
+    def _safe_update(ctrl: ft.Control) -> None:
+        if getattr(ctrl, "page", None) is not None:
+            ctrl.update()
+
     def _set_rows(items: list[dict]) -> None:
         try:
             items = sorted(items, key=lambda x: int(x.get("run_id") or 0), reverse=True)
@@ -46,7 +50,7 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
                 )
             )
         table.rows = rows
-        table.update()
+        _safe_update(table)
 
     def on_refresh(_: ft.ControlEvent) -> None:
         try:
@@ -57,11 +61,9 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
             status.value = f"共 {len(items) if isinstance(items, list) else 0} 条"
         except Exception as e:  # noqa: BLE001
             status.value = f"加载失败: {e}"
-        status.update()
+        _safe_update(status)
 
-    on_refresh(None)
-
-    return ft.View(
+    view = ft.View(
         route="/collections",
         controls=[
             ft.AppBar(
@@ -78,3 +80,6 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
         ],
         padding=20,
     )
+
+    view.on_mount = lambda _: on_refresh(None)
+    return view
