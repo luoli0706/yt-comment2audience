@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import threading
+import time
+
 import requests
 import flet as ft
 
@@ -24,6 +27,45 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
         output.update()
 
     last_run_id: int | None = None
+
+    loading_text = ft.Text("生成中，请稍作等候", size=12, color=ft.colors.GREY_600)
+    dot_colors = [ft.colors.GREY_400] * 6
+    dots = [
+        ft.Container(width=10, height=10, bgcolor=dot_colors[i], border_radius=999)
+        for i in range(6)
+    ]
+    loading_row = ft.Row(controls=dots, spacing=6)
+    loading_box = ft.Column(
+        controls=[loading_text, loading_row],
+        spacing=8,
+        visible=False,
+    )
+
+    loading_running = False
+
+    def _animate_loading() -> None:
+        nonlocal loading_running
+        step = 0
+        while loading_running:
+            for i, dot in enumerate(dots):
+                phase = (step + i) % 6
+                size = 8 + (phase if phase <= 3 else 6 - phase)
+                intensity = 200 + (phase * 10)
+                dot.width = size
+                dot.height = size
+                dot.bgcolor = ft.colors.with_opacity(1.0, ft.colors.BLUE_500)
+                dot.opacity = min(1.0, 0.4 + phase * 0.1)
+            loading_row.update()
+            step = (step + 1) % 6
+            time.sleep(0.15)
+
+    def _set_loading(on: bool) -> None:
+        nonlocal loading_running
+        loading_running = on
+        loading_box.visible = on
+        loading_box.update()
+        if on:
+            threading.Thread(target=_animate_loading, daemon=True).start()
 
     def on_collect_click(_: ft.ControlEvent) -> None:
         url = (url_field.value or "").strip()
@@ -58,6 +100,7 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
         if not last_run_id:
             _set_output("请先采集并清洗，确保获得 run_id")
             return
+        _set_loading(True)
         try:
             resp = requests.post(
                 f"{server_url}/api/portrait",
@@ -66,8 +109,10 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
             )
             data = resp.json()
         except Exception as e:  # noqa: BLE001
+            _set_loading(False)
             _set_output(f"请求失败: {e}")
             return
+        _set_loading(False)
         _set_output(data)
         if isinstance(data, dict) and data.get("ok") is True:
             page.data["selected_run_id"] = last_run_id
@@ -101,6 +146,7 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
                     ),
                 ]
             ),
+            loading_box,
             ft.Text(f"服务端：{server_url}", size=12, color=ft.colors.GREY_600),
         ],
         width=420,

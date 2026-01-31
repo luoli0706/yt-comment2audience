@@ -31,7 +31,7 @@ def _pie_chart(title: str, data: Dict[str, Any], *, width: int = 260) -> ft.Cont
         sections.append(
             ft.PieChartSection(
                 value=val,
-                title=f"{val:.2f}",
+                title="",
                 radius=70,
                 color=color,
             )
@@ -138,8 +138,8 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
     tags = ft.Text("", selectable=True)
     meta = ft.Text("", size=12, color=ft.colors.GREY_600)
 
-    left_container = ft.Column(spacing=10, width=520)
-    charts_container = ft.Column(spacing=12, width=520)
+    left_container = ft.Column(spacing=8, width=520)
+    charts_container = ft.Column(spacing=10, width=520)
 
     def _safe_update(ctrl: ft.Control) -> None:
         if getattr(ctrl, "page", None) is not None:
@@ -264,7 +264,7 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
                     charts_container,
                 ],
                 expand=True,
-                spacing=12,
+                spacing=10,
             ),
         ],
         expand=True,
