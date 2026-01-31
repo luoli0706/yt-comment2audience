@@ -124,6 +124,7 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
         if isinstance(data, dict) and data.get("ok") is True:
             page.data["selected_run_id"] = last_run_id
             page.data["prev_route"] = "/generate"
+            page.data["force_refresh"] = True
             page.go("/portrait-detail")
 
     def on_view_detail(_: ft.ControlEvent) -> None:
@@ -133,6 +134,7 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
             return
         page.data["selected_run_id"] = last_run_id
         page.data["prev_route"] = "/generate"
+        page.data["force_refresh"] = True
         page.go("/portrait-detail")
 
     left = ft.Column(

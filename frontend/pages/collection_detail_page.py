@@ -83,5 +83,4 @@ def collection_detail_view(page: ft.Page, server_url: str) -> ft.View:
         padding=20,
     )
     view.data = {"refresh": _load_detail}
-    view.on_mount = lambda _: _load_detail()
     return view

@@ -25,6 +25,8 @@ def main(page: ft.Page) -> None:
 
     def on_route_change(route: ft.RouteChangeEvent) -> None:
         page.views.clear()
+        if page.route in {"/portraits", "/collections", "/portrait-detail", "/collections/detail"}:
+            page.data["force_refresh"] = True
         if page.route == "/":
             page.views.append(main_view(page, server_url()))
         elif page.route == "/query":
@@ -48,7 +50,8 @@ def main(page: ft.Page) -> None:
         refresh = None
         if current_view is not None and isinstance(getattr(current_view, "data", None), dict):
             refresh = current_view.data.get("refresh")
-        if callable(refresh):
+        if callable(refresh) and page.data.get("force_refresh") is True:
+            page.data["force_refresh"] = False
             refresh(None)
 
     page.on_route_change = on_route_change

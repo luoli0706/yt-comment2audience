@@ -39,6 +39,7 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
             def _on_detail(e: ft.ControlEvent, rid=run_id) -> None:
                 page.data["selected_run_id"] = rid
                 page.data["prev_route"] = "/collections"
+                page.data["force_refresh"] = True
                 page.go("/collections/detail")
 
             def _on_delete(e: ft.ControlEvent, rid=run_id) -> None:
@@ -125,5 +126,4 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
         padding=20,
     )
     view.data = {"refresh": on_refresh}
-    view.on_mount = lambda _: on_refresh(None)
     return view

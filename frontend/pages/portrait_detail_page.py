@@ -285,5 +285,4 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
         scroll=ft.ScrollMode.AUTO,
     )
     view.data = {"refresh": _load_portrait}
-    view.on_mount = lambda _: _load_portrait()
     return view
