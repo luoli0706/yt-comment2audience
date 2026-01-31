@@ -20,7 +20,7 @@ def _pie_chart(title: str, data: Dict[str, Any]) -> ft.Control:
         sections.append(
             ft.PieChartSection(
                 value=val,
-                title=str(key),
+                title=f"{key} {val:.2f}",
                 radius=80,
             )
         )
@@ -48,9 +48,9 @@ def _progress_list(title: str, items: list[dict], key_name: str, key_value: str)
         rows.append(
             ft.Row(
                 [
-                    ft.Text(label, width=200, max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
-                    ft.ProgressBar(value=max(0.0, min(1.0, val)), width=220),
-                    ft.Text(f"{val:.2f}", width=50),
+                    ft.Text(label, width=220, max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
+                    ft.ProgressBar(value=max(0.0, min(1.0, val)), width=200),
+                    ft.Text(f"{val:.2f}", width=60),
                 ]
             )
         )
@@ -64,7 +64,7 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
     tags = ft.Text("", selectable=True)
     meta = ft.Text("", size=12, color=ft.colors.GREY_600)
 
-    left_container = ft.Column(spacing=8, width=520)
+    left_container = ft.Column(spacing=10, width=520)
     charts_container = ft.Column(spacing=12, expand=True)
 
     def _safe_update(ctrl: ft.Control) -> None:
@@ -103,18 +103,29 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
         )
 
         insights = portrait.get("audience_insights") or {}
+        confidence = portrait.get("confidence") or 0
+
+        def _card(title: str, body: ft.Control) -> ft.Container:
+            return ft.Container(
+                content=ft.Column([ft.Text(title, weight=ft.FontWeight.W_600), body], spacing=6),
+                padding=12,
+                border=ft.Border.all(1, ft.colors.GREY_300),
+                border_radius=8,
+            )
+
         left_container.controls = [
-            meta,
-            ft.Text("摘要"),
-            summary,
-            ft.Text("标签"),
-            tags,
-            ft.Text("兴趣"),
-            ft.Text("、".join(insights.get("interests") or []), selectable=True),
-            ft.Text("价值观"),
-            ft.Text("、".join(insights.get("values") or []), selectable=True),
-            ft.Text("内容偏好"),
-            ft.Text("、".join(insights.get("content_preferences") or []), selectable=True),
+            ft.Text(meta.value, size=12, color=ft.colors.GREY_600),
+            ft.Row(
+                [
+                    _card("置信度", ft.Text(f"{float(confidence):.2f}")),
+                    _card("parse_ok", ft.Text(str(data.get("parse_ok")))),
+                ]
+            ),
+            _card("摘要", summary),
+            _card("标签", tags),
+            _card("兴趣", ft.Text("、".join(insights.get("interests") or []), selectable=True)),
+            _card("价值观", ft.Text("、".join(insights.get("values") or []), selectable=True)),
+            _card("内容偏好", ft.Text("、".join(insights.get("content_preferences") or []), selectable=True)),
             ft.Row(
                 controls=[
                     ft.ElevatedButton("生成画像", on_click=on_generate_click),
@@ -128,12 +139,6 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
             _pie_chart("语言分布", portrait.get("language_distribution") or {}),
             _pie_chart("情感分布", portrait.get("sentiment") or {}),
             _progress_list("核心话题权重", portrait.get("topics") or [], "name", "weight"),
-            _progress_list(
-                "置信度",
-                [{"name": "confidence", "weight": portrait.get("confidence") or 0}],
-                "name",
-                "weight",
-            ),
         ]
 
         _safe_update(left_container)

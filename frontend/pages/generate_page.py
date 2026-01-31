@@ -74,6 +74,15 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
             page.data["prev_route"] = "/generate"
             page.go("/portrait-detail")
 
+    def on_view_detail(_: ft.ControlEvent) -> None:
+        nonlocal last_run_id
+        if not last_run_id:
+            _set_output("暂无可查看的 run_id，请先采集或生成")
+            return
+        page.data["selected_run_id"] = last_run_id
+        page.data["prev_route"] = "/generate"
+        page.go("/portrait-detail")
+
     left = ft.Column(
         controls=[
             ft.Text("画像生成", size=18, weight=ft.FontWeight.W_600),
@@ -85,6 +94,10 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
                     ft.OutlinedButton(
                         "画像生成",
                         on_click=on_generate_portrait,
+                    ),
+                    ft.OutlinedButton(
+                        "查看画像详情",
+                        on_click=on_view_detail,
                     ),
                 ]
             ),

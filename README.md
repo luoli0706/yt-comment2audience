@@ -158,6 +158,10 @@ Response JSON:
 .\.venv\Scripts\python scripts\test_portrait_api.py
 ```
 
+## API 文档 / API Docs
+
+详见 [docs/API.md](docs/API.md)
+
 ## 自定义画像模板 / Custom Prompt Templates
 
 通过编辑 prompt JSON 文件，并在 `.env` 中指定 `AI_PROMPT` 即可切换模板：
