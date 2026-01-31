@@ -145,7 +145,7 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
         if getattr(ctrl, "page", None) is not None:
             ctrl.update()
 
-    def _load_portrait() -> None:
+    def _load_portrait(_: ft.ControlEvent | None = None) -> None:
         run_id = (page.data or {}).get("selected_run_id")
         if not run_id:
             status.value = "未选择 run_id，请从列表进入。"
