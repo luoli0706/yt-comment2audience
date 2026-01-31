@@ -1,43 +1,70 @@
 from __future__ import annotations
 
-import base64
-import io
 import json
 from typing import Any, Dict
 
 import flet as ft
-import matplotlib.pyplot as plt
 import requests
 
 
-def _fig_to_base64(fig: plt.Figure) -> str:
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight", dpi=120)
-    plt.close(fig)
-    return base64.b64encode(buf.getvalue()).decode("utf-8")
-
-
-def _pie_chart(title: str, data: Dict[str, Any]) -> str | None:
+def _pie_chart(title: str, data: Dict[str, Any]) -> ft.Control:
     if not data:
-        return None
-    labels = list(data.keys())
-    values = [float(data.get(k) or 0) for k in labels]
-    fig, ax = plt.subplots(figsize=(4.2, 3.2))
-    ax.pie(values, labels=labels, autopct="%1.0f%%")
-    ax.set_title(title)
-    return _fig_to_base64(fig)
+        return ft.Text(f"{title}: 无数据")
+
+    sections = []
+    for key, value in data.items():
+        try:
+            val = float(value or 0)
+        except Exception:
+            val = 0.0
+        sections.append(
+            ft.PieChartSection(
+                value=val,
+                title=str(key),
+                radius=80,
+            )
+        )
+
+    return ft.Column(
+        controls=[
+            ft.Text(title, weight=ft.FontWeight.W_600),
+            ft.PieChart(sections=sections, sections_space=2, center_space_radius=20),
+        ],
+        spacing=8,
+    )
 
 
-def _bar_chart(title: str, items: list[dict], key_name: str, key_value: str) -> str | None:
+def _bar_chart(title: str, items: list[dict], key_name: str, key_value: str) -> ft.Control:
     if not items:
-        return None
-    labels = [str(i.get(key_name, "")) for i in items]
-    values = [float(i.get(key_value, 0) or 0) for i in items]
-    fig, ax = plt.subplots(figsize=(5.2, 3.2))
-    ax.bar(labels, values)
-    ax.set_title(title)
-    ax.tick_params(axis="x", rotation=30)
-    return _fig_to_base64(fig)
+        return ft.Text(f"{title}: 无数据")
+
+    groups = []
+    for item in items:
+        label = str(item.get(key_name, ""))
+        try:
+            val = float(item.get(key_value, 0) or 0)
+        except Exception:
+            val = 0.0
+        groups.append(
+            ft.BarChartGroup(
+                x=label,
+                bar_rods=[ft.BarChartRod(from_y=0, to_y=val)],
+            )
+        )
+
+    return ft.Column(
+        controls=[
+            ft.Text(title, weight=ft.FontWeight.W_600),
+            ft.BarChart(
+                bar_groups=groups,
+                groups_space=12,
+                border=ft.Border.all(1, ft.colors.GREY_300),
+                max_y=1.0,
+                expand=True,
+            ),
+        ],
+        spacing=8,
+    )
 
 
 def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
@@ -46,25 +73,7 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
     tags = ft.Text("", selectable=True)
     meta = ft.Text("", size=12, color=ft.colors.GREY_600)
 
-    img_lang = ft.Image(width=420, height=320, fit=ft.ImageFit.CONTAIN)
-    img_sent = ft.Image(width=420, height=320, fit=ft.ImageFit.CONTAIN)
-    img_topics = ft.Image(width=520, height=320, fit=ft.ImageFit.CONTAIN)
-
-    def _set_images(portrait: dict) -> None:
-        lang_img = _pie_chart("语言分布", portrait.get("language_distribution") or {})
-        sent_img = _pie_chart("情感分布", portrait.get("sentiment") or {})
-        topics_img = _bar_chart("核心话题权重", portrait.get("topics") or [], "name", "weight")
-
-        if lang_img:
-            img_lang.src_base64 = lang_img
-        if sent_img:
-            img_sent.src_base64 = sent_img
-        if topics_img:
-            img_topics.src_base64 = topics_img
-
-        img_lang.update()
-        img_sent.update()
-        img_topics.update()
+    charts_container = ft.Column(spacing=12, expand=True)
 
     def _load_portrait() -> None:
         run_id = (page.data or {}).get("selected_run_id")
@@ -102,7 +111,12 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
         meta.update()
         status.value = ""
         status.update()
-        _set_images(portrait if isinstance(portrait, dict) else {})
+        charts_container.controls = [
+            _pie_chart("语言分布", portrait.get("language_distribution") or {}),
+            _pie_chart("情感分布", portrait.get("sentiment") or {}),
+            _bar_chart("核心话题权重", portrait.get("topics") or [], "name", "weight"),
+        ]
+        charts_container.update()
 
     def on_generate_click(_: ft.ControlEvent) -> None:
         run_id = (page.data or {}).get("selected_run_id")
@@ -156,14 +170,7 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
                     ],
                     width=420,
                 ),
-                ft.Column(
-                    controls=[
-                        img_lang,
-                        img_sent,
-                        img_topics,
-                    ],
-                    expand=True,
-                ),
+                charts_container,
             ],
             expand=True,
         ),
