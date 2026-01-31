@@ -22,8 +22,7 @@ __pycache__/
 .venv/Lib/**/site-packages/
 .venv/**/__pycache__/
 
-# Dependency manifests (keep repo independent)
-requirements.txt
+# Dependency manifests
 
 # Flask
 instance/

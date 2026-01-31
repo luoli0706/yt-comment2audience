@@ -403,3 +403,8 @@ def get_ai_portrait(conn: sqlite3.Connection, run_id: int) -> Optional[sqlite3.R
     return conn.execute(
         "SELECT * FROM ai_portraits WHERE run_id = ? LIMIT 1", (int(run_id),)
     ).fetchone()
+
+
+def delete_ai_portrait(conn: sqlite3.Connection, run_id: int) -> int:
+    cur = conn.execute("DELETE FROM ai_portraits WHERE run_id = ?", (int(run_id),))
+    return int(cur.rowcount or 0)

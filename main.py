@@ -184,6 +184,87 @@ def portrait_dispatch():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+@app.post("/api/portrait/query")
+def portrait_query():
+    payload: Dict[str, Any] = request.get_json(silent=True) or {}
+    run_id_raw = payload.get("run_id")
+    if run_id_raw in (None, ""):
+        return jsonify({"ok": False, "error": "Missing run_id"}), 400
+
+    try:
+        run_id = int(run_id_raw)
+    except Exception:
+        return jsonify({"ok": False, "error": "run_id must be int"}), 400
+    if run_id <= 0:
+        return jsonify({"ok": False, "error": "run_id must be positive int"}), 400
+
+    from src.config import db_path, load_settings  # noqa: WPS433
+    from src.database.sqlite import connect, get_ai_portrait, init_schema  # noqa: WPS433
+
+    settings = load_settings()
+    conn = connect(db_path(settings))
+    try:
+        init_schema(conn)
+        row = get_ai_portrait(conn, run_id)
+        if row is None:
+            return jsonify({"ok": False, "error": "portrait not found"}), 404
+
+        portrait = None
+        if row["parse_ok"] and row["portrait_json"]:
+            try:
+                import json
+
+                portrait = json.loads(row["portrait_json"])
+            except Exception:
+                portrait = None
+
+        return jsonify(
+            {
+                "ok": True,
+                "run_id": run_id,
+                "portrait": portrait,
+                "portrait_raw": row["portrait_raw"],
+                "parse_ok": bool(row["parse_ok"]),
+                "error": row["error"],
+                "prompt_name": row["prompt_name"],
+                "prompt_version": row["prompt_version"],
+                "provider": row["provider"],
+                "model": row["model"],
+                "created_at": row["created_at"],
+            }
+        )
+    finally:
+        conn.close()
+
+
+@app.post("/api/portrait/delete")
+def portrait_delete():
+    payload: Dict[str, Any] = request.get_json(silent=True) or {}
+    run_id_raw = payload.get("run_id")
+    if run_id_raw in (None, ""):
+        return jsonify({"ok": False, "error": "Missing run_id"}), 400
+
+    try:
+        run_id = int(run_id_raw)
+    except Exception:
+        return jsonify({"ok": False, "error": "run_id must be int"}), 400
+    if run_id <= 0:
+        return jsonify({"ok": False, "error": "run_id must be positive int"}), 400
+
+    from src.config import db_path, load_settings  # noqa: WPS433
+    from src.database.sqlite import connect, delete_ai_portrait, init_schema  # noqa: WPS433
+
+    settings = load_settings()
+    conn = connect(db_path(settings))
+    try:
+        init_schema(conn)
+        deleted = delete_ai_portrait(conn, run_id)
+        conn.commit()
+        return jsonify({"ok": True, "run_id": run_id, "deleted": deleted})
+    finally:
+        conn.close()
+
+
 if __name__ == "__main__":
     app.run(
         host=os.getenv("HOST", "127.0.0.1"),
