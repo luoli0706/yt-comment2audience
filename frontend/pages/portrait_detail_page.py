@@ -11,24 +11,86 @@ def _pie_chart(title: str, data: Dict[str, Any]) -> ft.Control:
     if not data:
         return ft.Text(f"{title}: 无数据")
 
+    palette = [
+        ft.colors.BLUE_500,
+        ft.colors.GREEN_500,
+        ft.colors.ORANGE_500,
+        ft.colors.PURPLE_500,
+        ft.colors.RED_500,
+        ft.colors.TEAL_500,
+    ]
+
     sections = []
-    for key, value in data.items():
+    legend_rows = []
+    for idx, (key, value) in enumerate(data.items()):
         try:
             val = float(value or 0)
         except Exception:
             val = 0.0
+        color = palette[idx % len(palette)]
         sections.append(
             ft.PieChartSection(
                 value=val,
-                title=f"{key} {val:.2f}",
-                radius=80,
+                title=f"{val:.2f}",
+                radius=70,
+                color=color,
+            )
+        )
+        legend_rows.append(
+            ft.Row(
+                [
+                    ft.Container(width=10, height=10, bgcolor=color, border_radius=2),
+                    ft.Text(f"{key}: {val:.2f}"),
+                ],
+                spacing=6,
             )
         )
 
     return ft.Column(
         controls=[
             ft.Text(title, weight=ft.FontWeight.W_600),
-            ft.PieChart(sections=sections, sections_space=2, center_space_radius=20),
+            ft.Row(
+                [
+                    ft.PieChart(sections=sections, sections_space=2, center_space_radius=18),
+                    ft.Column(legend_rows, spacing=4),
+                ],
+                spacing=12,
+            ),
+        ],
+        spacing=8,
+    )
+
+
+def _bar_chart(title: str, data: Dict[str, Any]) -> ft.Control:
+    if not data:
+        return ft.Text(f"{title}: 无数据")
+
+    groups = []
+    for idx, (key, value) in enumerate(data.items()):
+        try:
+            val = float(value or 0)
+        except Exception:
+            val = 0.0
+        groups.append(
+            ft.BarChartGroup(
+                x=idx,
+                bar_rods=[ft.BarChartRod(from_y=0, to_y=val)],
+            )
+        )
+
+    labels = [str(k) for k in data.keys()]
+
+    return ft.Column(
+        controls=[
+            ft.Text(title, weight=ft.FontWeight.W_600),
+            ft.BarChart(
+                bar_groups=groups,
+                groups_space=14,
+                max_y=1.0,
+                border=ft.border.all(1, ft.colors.GREY_300),
+                bottom_axis=ft.ChartAxis(labels=labels, labels_interval=1),
+                left_axis=ft.ChartAxis(labels_interval=0.25),
+            ),
         ],
         spacing=8,
     )
@@ -135,9 +197,15 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
         ]
 
         status.value = ""
+        language_dist = portrait.get("language_distribution") or {}
+        sentiment = portrait.get("sentiment") or {}
+
         charts_container.controls = [
-            _pie_chart("语言分布", portrait.get("language_distribution") or {}),
-            _pie_chart("情感分布", portrait.get("sentiment") or {}),
+            ft.Text("分布概览", weight=ft.FontWeight.W_600, size=16),
+            _pie_chart("语言分布", language_dist),
+            _bar_chart("语言分布（柱状）", language_dist),
+            _pie_chart("情感分布", sentiment),
+            _bar_chart("情感分布（柱状）", sentiment),
             _progress_list("核心话题权重", portrait.get("topics") or [], "name", "weight"),
         ]
 
@@ -172,22 +240,34 @@ def portrait_detail_view(page: ft.Page, server_url: str) -> ft.View:
         prev = (page.data or {}).get("prev_route") or "/portraits"
         page.go(str(prev))
 
-    controls = [
-        ft.AppBar(
-            title=ft.Text("画像详情"),
-            leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=_go_back),
-            actions=[ft.IconButton(ft.icons.REFRESH, on_click=lambda _: _load_portrait())],
-        ),
-        status,
-        ft.Row(
-            controls=[
-                left_container,
-                charts_container,
-            ],
-            expand=True,
-        ),
-    ]
+    content = ft.Column(
+        controls=[
+            status,
+            ft.Row(
+                controls=[
+                    left_container,
+                    charts_container,
+                ],
+                expand=True,
+                spacing=16,
+            ),
+        ],
+        expand=True,
+        scroll=ft.ScrollMode.AUTO,
+    )
 
-    view = ft.View(route="/portrait-detail", controls=controls, padding=20)
+    view = ft.View(
+        route="/portrait-detail",
+        controls=[
+            ft.AppBar(
+                title=ft.Text("画像详情"),
+                leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=_go_back),
+                actions=[ft.IconButton(ft.icons.REFRESH, on_click=lambda _: _load_portrait())],
+            ),
+            content,
+        ],
+        padding=20,
+        scroll=ft.ScrollMode.AUTO,
+    )
     view.on_mount = lambda _: _load_portrait()
     return view
