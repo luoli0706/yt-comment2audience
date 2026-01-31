@@ -18,7 +18,7 @@ def main_view(page: ft.Page, server_url: str) -> ft.View:
                 on_click=lambda _: page.go("/generate"),
             ),
             ft.Divider(),
-            ft.Text(f"当前服务端：{server_url}", size=12, color=ft.Colors.GREY_600),
+            ft.Text(f"当前服务端：{server_url}", size=12, color=ft.colors.GREY_600),
         ],
         horizontal_alignment=ft.CrossAxisAlignment.START,
         padding=20,

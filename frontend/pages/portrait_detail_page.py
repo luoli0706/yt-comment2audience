@@ -9,7 +9,7 @@ def portrait_detail_view(page: ft.Page) -> ft.View:
         controls=[
             ft.AppBar(
                 title=ft.Text("画像详情"),
-                leading=ft.IconButton(ft.Icons.ARROW_BACK, on_click=lambda _: page.go("/generate")),
+                leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/generate")),
             ),
             ft.Text("（占位）此页面后续展示画像详情。"),
         ],

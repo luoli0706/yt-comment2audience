@@ -79,7 +79,7 @@ def query_view(page: ft.Page, server_url: str) -> ft.View:
                     ft.OutlinedButton("删除", on_click=on_delete_click),
                 ]
             ),
-            ft.Text(f"服务端：{server_url}", size=12, color=ft.Colors.GREY_600),
+            ft.Text(f"服务端：{server_url}", size=12, color=ft.colors.GREY_600),
         ],
         width=260,
         spacing=12,
@@ -92,7 +92,7 @@ def query_view(page: ft.Page, server_url: str) -> ft.View:
         controls=[
             ft.AppBar(
                 title=ft.Text("查询画像"),
-                leading=ft.IconButton(ft.Icons.ARROW_BACK, on_click=lambda _: page.go("/")),
+                leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/")),
             ),
             ft.Row([left, right], expand=True),
         ],

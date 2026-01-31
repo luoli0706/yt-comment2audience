@@ -59,7 +59,7 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
                     ),
                 ]
             ),
-            ft.Text(f"服务端：{server_url}", size=12, color=ft.Colors.GREY_600),
+            ft.Text(f"服务端：{server_url}", size=12, color=ft.colors.GREY_600),
         ],
         width=420,
         spacing=12,
@@ -72,7 +72,7 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
         controls=[
             ft.AppBar(
                 title=ft.Text("画像生成"),
-                leading=ft.IconButton(ft.Icons.ARROW_BACK, on_click=lambda _: page.go("/")),
+                leading=ft.IconButton(ft.icons.ARROW_BACK, on_click=lambda _: page.go("/")),
             ),
             ft.Row([left, right], expand=True),
         ],
