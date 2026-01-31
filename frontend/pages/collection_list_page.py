@@ -5,6 +5,7 @@ import flet as ft
 
 
 def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
+    scroll = ft.ScrollController()
     table = ft.DataTable(
         columns=[
             ft.DataColumn(ft.Text("run_id")),
@@ -96,6 +97,12 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
             status.value = f"加载失败: {e}"
         _safe_update(status)
 
+    def _on_pan_update(e: ft.DragUpdateEvent) -> None:
+        try:
+            scroll.scroll_to(offset=scroll.offset - e.delta_x, duration=0)
+        except Exception:
+            pass
+
     view = ft.View(
         route="/collections",
         controls=[
@@ -109,7 +116,10 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
                     status,
                 ]
             ),
-            ft.Row([table], scroll=ft.ScrollMode.AUTO, expand=True),
+            ft.GestureDetector(
+                on_pan_update=_on_pan_update,
+                content=ft.Row([table], scroll=ft.ScrollMode.AUTO, scroll_controller=scroll, expand=True),
+            ),
         ],
         padding=20,
     )
