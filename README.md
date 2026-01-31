@@ -175,3 +175,14 @@ AI_PROMPT="AI_PROMPT/your_custom_prompt.json"
 ## License
 
 Licensed under the Apache License 2.0. See [LICENSE](LICENSE).
+
+## Frontend (Flet)
+
+在 [frontend/](frontend/) 提供一个基础 Flet 图形界面：
+- 主页面包含两个路由按钮：查询画像 / 画像生成（当前为占位页面）
+- 服务端地址通过 `frontend/.env` 中的 `SERVER_URL` 配置（默认 http://127.0.0.1:5076）
+
+运行示例（需先安装 flet）：
+```powershell
+.\.venv\Scripts\python frontend\app.py
+```

@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!frontend/.env.example
 
 # OS
 .DS_Store
