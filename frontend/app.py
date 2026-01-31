@@ -20,6 +20,7 @@ def main(page: ft.Page) -> None:
 
     page.title = "yt-comment2audience"
     page.theme_mode = ft.ThemeMode.LIGHT
+    page.data = {"selected_run_id": None}
 
     def on_route_change(route: ft.RouteChangeEvent) -> None:
         page.views.clear()
@@ -30,7 +31,7 @@ def main(page: ft.Page) -> None:
         elif page.route == "/generate":
             page.views.append(generate_view(page, server_url()))
         elif page.route == "/portrait-detail":
-            page.views.append(portrait_detail_view(page))
+            page.views.append(portrait_detail_view(page, server_url()))
         elif page.route == "/portraits":
             page.views.append(portrait_list_view(page, server_url()))
         elif page.route == "/collections":

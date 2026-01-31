@@ -23,6 +23,8 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
             output.value = str(data)
         output.update()
 
+    last_run_id: int | None = None
+
     def on_collect_click(_: ft.ControlEvent) -> None:
         url = (url_field.value or "").strip()
         if not url:
@@ -44,6 +46,32 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
             _set_output(f"请求失败: {e}")
             return
         _set_output(data)
+        if isinstance(data, dict) and data.get("ok") is True:
+            try:
+                nonlocal last_run_id
+                last_run_id = int(data.get("run_id"))
+            except Exception:
+                last_run_id = None
+
+    def on_generate_portrait(_: ft.ControlEvent) -> None:
+        nonlocal last_run_id
+        if not last_run_id:
+            _set_output("请先采集并清洗，确保获得 run_id")
+            return
+        try:
+            resp = requests.post(
+                f"{server_url}/api/portrait",
+                json={"run_id": last_run_id, "overwrite": True},
+                timeout=300,
+            )
+            data = resp.json()
+        except Exception as e:  # noqa: BLE001
+            _set_output(f"请求失败: {e}")
+            return
+        _set_output(data)
+        if isinstance(data, dict) and data.get("ok") is True:
+            page.data["selected_run_id"] = last_run_id
+            page.go("/portrait-detail")
 
     left = ft.Column(
         controls=[
@@ -55,7 +83,7 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
                     ft.ElevatedButton("采集并清洗", on_click=on_collect_click),
                     ft.OutlinedButton(
                         "画像生成",
-                        on_click=lambda _: page.go("/portrait-detail"),
+                        on_click=on_generate_portrait,
                     ),
                 ]
             ),

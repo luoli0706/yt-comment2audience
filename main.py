@@ -209,6 +209,14 @@ def portrait_query():
         if row is None:
             return jsonify({"ok": False, "error": "portrait not found"}), 404
 
+        meta = conn.execute(
+            """
+            SELECT video_url, video_title, channel_title, channel_id
+            FROM collection_runs WHERE id = ? LIMIT 1
+            """,
+            (run_id,),
+        ).fetchone()
+
         portrait = None
         if row["parse_ok"] and row["portrait_json"]:
             try:
@@ -231,6 +239,10 @@ def portrait_query():
                 "provider": row["provider"],
                 "model": row["model"],
                 "created_at": row["created_at"],
+                "video_url": meta["video_url"] if meta else None,
+                "video_title": meta["video_title"] if meta else None,
+                "channel_title": meta["channel_title"] if meta else None,
+                "channel_id": meta["channel_id"] if meta else None,
             }
         )
     finally:
@@ -319,6 +331,8 @@ def collections_list():
                 "collected_at": r["collected_at"],
                 "order_mode": r["order_mode"],
                 "max_comments": r["max_comments"],
+                "raw_count": r["raw_count"],
+                "clean_count": r["clean_count"],
             }
             for r in rows
         ]

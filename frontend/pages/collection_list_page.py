@@ -8,11 +8,12 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
     table = ft.DataTable(
         columns=[
             ft.DataColumn(ft.Text("run_id")),
-            ft.DataColumn(ft.Text("video_title")),
+            ft.DataColumn(ft.Text("video_url")),
+            ft.DataColumn(ft.Text("title")),
             ft.DataColumn(ft.Text("channel")),
             ft.DataColumn(ft.Text("collected_at")),
-            ft.DataColumn(ft.Text("order")),
-            ft.DataColumn(ft.Text("max")),
+            ft.DataColumn(ft.Text("raw")),
+            ft.DataColumn(ft.Text("clean")),
         ],
         rows=[],
         expand=True,
@@ -21,17 +22,26 @@ def collection_list_view(page: ft.Page, server_url: str) -> ft.View:
     status = ft.Text("", size=12, color=ft.colors.GREY_600)
 
     def _set_rows(items: list[dict]) -> None:
+        try:
+            items = sorted(items, key=lambda x: int(x.get("run_id") or 0), reverse=True)
+        except Exception:
+            pass
         rows = []
         for it in items:
             rows.append(
                 ft.DataRow(
                     cells=[
                         ft.DataCell(ft.Text(str(it.get("run_id", "")))),
-                        ft.DataCell(ft.Text(str(it.get("video_title") or ""), max_lines=2)),
+                        ft.DataCell(
+                            ft.Text(str(it.get("video_url") or ""), max_lines=2, overflow=ft.TextOverflow.ELLIPSIS)
+                        ),
+                        ft.DataCell(
+                            ft.Text(str(it.get("video_title") or ""), max_lines=2, overflow=ft.TextOverflow.ELLIPSIS)
+                        ),
                         ft.DataCell(ft.Text(str(it.get("channel_title") or ""), max_lines=1)),
                         ft.DataCell(ft.Text(str(it.get("collected_at") or ""))),
-                        ft.DataCell(ft.Text(str(it.get("order_mode") or ""))),
-                        ft.DataCell(ft.Text(str(it.get("max_comments") or ""))),
+                        ft.DataCell(ft.Text(str(it.get("raw_count") or ""))),
+                        ft.DataCell(ft.Text(str(it.get("clean_count") or ""))),
                     ]
                 )
             )

@@ -444,7 +444,17 @@ def list_collection_runs(conn: sqlite3.Connection) -> Iterable[sqlite3.Row]:
                channel_id,
                collected_at,
                order_mode,
-               max_comments
+               max_comments,
+               (
+                   SELECT COUNT(1)
+                   FROM raw_comment_threads t
+                   WHERE t.run_id = collection_runs.id
+               ) AS raw_count,
+               (
+                   SELECT COUNT(1)
+                   FROM clean_comments c
+                   WHERE c.run_id = collection_runs.id
+               ) AS clean_count
         FROM collection_runs
         ORDER BY id DESC
         """
@@ -469,7 +479,7 @@ def list_ai_portraits(conn: sqlite3.Connection) -> Iterable[sqlite3.Row]:
                r.collected_at
         FROM ai_portraits p
         JOIN collection_runs r ON r.id = p.run_id
-        ORDER BY p.created_at DESC
+        ORDER BY p.run_id DESC
         """
     )
 

@@ -9,11 +9,11 @@ def portrait_list_view(page: ft.Page, server_url: str) -> ft.View:
     table = ft.DataTable(
         columns=[
             ft.DataColumn(ft.Text("run_id")),
-            ft.DataColumn(ft.Text("video_title")),
+            ft.DataColumn(ft.Text("video_url")),
+            ft.DataColumn(ft.Text("title")),
             ft.DataColumn(ft.Text("channel")),
-            ft.DataColumn(ft.Text("collected_at")),
             ft.DataColumn(ft.Text("portrait_at")),
-            ft.DataColumn(ft.Text("parse_ok")),
+            ft.DataColumn(ft.Text("action")),
         ],
         rows=[],
         expand=True,
@@ -22,17 +22,34 @@ def portrait_list_view(page: ft.Page, server_url: str) -> ft.View:
     status = ft.Text("", size=12, color=ft.colors.GREY_600)
 
     def _set_rows(items: list[dict]) -> None:
+        try:
+            items = sorted(items, key=lambda x: int(x.get("run_id") or 0), reverse=True)
+        except Exception:
+            pass
         rows = []
         for it in items:
+            run_id = it.get("run_id")
             rows.append(
                 ft.DataRow(
                     cells=[
-                        ft.DataCell(ft.Text(str(it.get("run_id", "")))),
-                        ft.DataCell(ft.Text(str(it.get("video_title") or ""), max_lines=2)),
+                        ft.DataCell(ft.Text(str(run_id or ""))),
+                        ft.DataCell(
+                            ft.Text(str(it.get("video_url") or ""), max_lines=2, overflow=ft.TextOverflow.ELLIPSIS)
+                        ),
+                        ft.DataCell(
+                            ft.Text(str(it.get("video_title") or ""), max_lines=2, overflow=ft.TextOverflow.ELLIPSIS)
+                        ),
                         ft.DataCell(ft.Text(str(it.get("channel_title") or ""), max_lines=1)),
-                        ft.DataCell(ft.Text(str(it.get("collected_at") or ""))),
                         ft.DataCell(ft.Text(str(it.get("portrait_created_at") or ""))),
-                        ft.DataCell(ft.Text(str(it.get("parse_ok")))),
+                        ft.DataCell(
+                            ft.ElevatedButton(
+                                "画像查询",
+                                on_click=lambda e, rid=run_id: (
+                                    page.data.__setitem__("selected_run_id", rid),
+                                    page.go("/portrait-detail"),
+                                ),
+                            )
+                        ),
                     ]
                 )
             )
