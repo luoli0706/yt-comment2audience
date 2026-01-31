@@ -50,14 +50,13 @@ def generate_view(page: ft.Page, server_url: str) -> ft.View:
             for i, dot in enumerate(dots):
                 phase = (step + i) % 6
                 size = 8 + (phase if phase <= 3 else 6 - phase)
-                intensity = 200 + (phase * 10)
                 dot.width = size
                 dot.height = size
                 dot.bgcolor = ft.colors.with_opacity(1.0, ft.colors.BLUE_500)
-                dot.opacity = min(1.0, 0.4 + phase * 0.1)
+                dot.opacity = min(1.0, 0.35 + phase * 0.08)
             loading_row.update()
             step = (step + 1) % 6
-            time.sleep(0.15)
+            time.sleep(0.25)
 
     def _set_loading(on: bool) -> None:
         nonlocal loading_running
